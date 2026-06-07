@@ -5,11 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Anime & Game Character AI Chat</title>
   <style>
-    *, *::before, *::after {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
       --bg-primary: #0a0a0f;
@@ -47,29 +43,24 @@
       z-index: 0;
     }
 
-    .lang-bar {
+    .top-bar {
       position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
+      top: 0; left: 0; right: 0;
       z-index: 100;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 0.5rem;
+      flex-wrap: wrap;
+      gap: 0.5rem 1rem;
       padding: 0.75rem 1rem;
       background: rgba(18, 18, 26, 0.92);
       backdrop-filter: blur(12px);
       border-bottom: 1px solid var(--border);
     }
 
-    .lang-bar label {
-      font-size: 0.85rem;
-      color: var(--text-secondary);
-      margin-right: 0.25rem;
-    }
+    .top-bar label { font-size: 0.85rem; color: var(--text-secondary); }
 
-    .lang-btn {
+    .lang-btn, .settings-btn {
       background: var(--bg-card);
       border: 1px solid var(--border);
       color: var(--text-secondary);
@@ -81,7 +72,7 @@
       transition: all 0.2s ease;
     }
 
-    .lang-btn:hover {
+    .lang-btn:hover, .settings-btn:hover {
       border-color: var(--accent-purple);
       color: var(--text-primary);
     }
@@ -92,18 +83,26 @@
       color: white;
     }
 
+    .detected-lang {
+      font-size: 0.75rem;
+      color: var(--accent-blue);
+      padding: 0.25rem 0.6rem;
+      background: rgba(76, 201, 240, 0.1);
+      border-radius: 6px;
+      display: none;
+    }
+
+    .detected-lang.visible { display: inline-block; }
+
     .screen {
       display: none;
       position: relative;
       z-index: 1;
       min-height: 100vh;
-      padding-top: 52px;
+      padding-top: 56px;
     }
 
-    .screen.active {
-      display: flex;
-      flex-direction: column;
-    }
+    .screen.active { display: flex; flex-direction: column; }
 
     #selection-screen {
       align-items: center;
@@ -111,15 +110,11 @@
       padding: 2rem 1.5rem;
     }
 
-    .selection-header {
-      text-align: center;
-      margin-bottom: 3rem;
-    }
+    .selection-header { text-align: center; margin-bottom: 3rem; }
 
     .selection-header h1 {
       font-size: clamp(1.8rem, 5vw, 2.8rem);
       font-weight: 800;
-      letter-spacing: -0.02em;
       background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple), var(--accent-red));
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
@@ -127,10 +122,16 @@
       margin-bottom: 0.5rem;
     }
 
-    .selection-header p {
-      color: var(--text-secondary);
-      font-size: 1rem;
+    .selection-header p { color: var(--text-secondary); font-size: 1rem; }
+
+    .api-notice {
+      margin-top: 1rem;
+      font-size: 0.8rem;
+      color: var(--accent-purple);
+      cursor: pointer;
     }
+
+    .api-notice:hover { text-decoration: underline; }
 
     .character-grid {
       display: grid;
@@ -177,17 +178,12 @@
     .character-card:hover::before { opacity: 1; }
 
     .character-avatar {
-      width: 80px;
-      height: 80px;
+      width: 80px; height: 80px;
       border-radius: 50%;
       margin: 0 auto 1.25rem;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 2.2rem;
-      font-weight: 900;
-      position: relative;
-      z-index: 1;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2.2rem; font-weight: 900;
+      position: relative; z-index: 1;
     }
 
     .character-card.sukuna .character-avatar {
@@ -205,38 +201,14 @@
       box-shadow: 0 0 20px rgba(45, 106, 79, 0.4);
     }
 
-    .character-name {
-      font-size: 1.4rem;
-      font-weight: 700;
-      margin-bottom: 0.4rem;
-      position: relative;
-      z-index: 1;
-    }
+    .character-name { font-size: 1.4rem; font-weight: 700; margin-bottom: 0.4rem; position: relative; z-index: 1; }
+    .character-title { color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 0.75rem; position: relative; z-index: 1; }
+    .character-desc { color: var(--text-secondary); font-size: 0.9rem; line-height: 1.5; position: relative; z-index: 1; }
 
-    .character-title {
-      color: var(--text-secondary);
-      font-size: 0.85rem;
-      margin-bottom: 0.75rem;
-      position: relative;
-      z-index: 1;
-    }
-
-    .character-desc {
-      color: var(--text-secondary);
-      font-size: 0.9rem;
-      line-height: 1.5;
-      position: relative;
-      z-index: 1;
-    }
-
-    #chat-screen {
-      height: 100vh;
-    }
+    #chat-screen { height: 100vh; }
 
     .chat-header {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
+      display: flex; align-items: center; gap: 1rem;
       padding: 1rem 1.5rem;
       background: var(--bg-secondary);
       border-bottom: 1px solid var(--border);
@@ -247,44 +219,26 @@
       background: none;
       border: 1px solid var(--border);
       color: var(--text-secondary);
-      width: 40px;
-      height: 40px;
+      width: 40px; height: 40px;
       border-radius: 10px;
       cursor: pointer;
       font-size: 1.1rem;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: background 0.2s, color 0.2s, border-color 0.2s;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.2s, color 0.2s;
     }
 
-    .back-btn:hover {
-      background: var(--bg-card);
-      color: var(--text-primary);
-      border-color: var(--text-secondary);
-    }
+    .back-btn:hover { background: var(--bg-card); color: var(--text-primary); }
 
     .chat-header-avatar {
-      width: 44px;
-      height: 44px;
+      width: 44px; height: 44px;
       border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.2rem;
-      font-weight: 800;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.2rem; font-weight: 800;
       flex-shrink: 0;
     }
 
-    .chat-header-info h2 {
-      font-size: 1.1rem;
-      font-weight: 700;
-    }
-
-    .chat-header-info span {
-      font-size: 0.8rem;
-      color: var(--text-secondary);
-    }
+    .chat-header-info h2 { font-size: 1.1rem; font-weight: 700; }
+    .chat-header-info span { font-size: 0.8rem; color: var(--text-secondary); }
 
     .chat-messages {
       flex: 1;
@@ -297,7 +251,6 @@
     }
 
     .chat-messages::-webkit-scrollbar { width: 6px; }
-    .chat-messages::-webkit-scrollbar-track { background: transparent; }
     .chat-messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 
     .message {
@@ -320,50 +273,44 @@
       line-height: 1.5;
       font-size: 0.95rem;
       word-wrap: break-word;
+      white-space: pre-wrap;
     }
 
-    .message.user .message-bubble {
-      background: var(--user-bubble);
-      border-bottom-right-radius: 4px;
-    }
-
-    .message.ai .message-bubble {
-      background: var(--ai-bubble);
-      border: 1px solid var(--border);
-      border-bottom-left-radius: 4px;
-    }
+    .message.user .message-bubble { background: var(--user-bubble); border-bottom-right-radius: 4px; }
+    .message.ai .message-bubble { background: var(--ai-bubble); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
+    .message.error .message-bubble { background: rgba(230, 57, 70, 0.15); border-color: var(--accent-red); color: #ff8a93; }
 
     .typing-indicator {
-      display: flex;
-      align-items: center;
-      gap: 4px;
+      display: flex; align-items: center; gap: 6px;
       padding: 0.75rem 1.1rem;
       background: var(--ai-bubble);
       border: 1px solid var(--border);
       border-radius: 16px;
       border-bottom-left-radius: 4px;
       align-self: flex-start;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
     }
 
-    .typing-indicator span {
-      width: 7px;
-      height: 7px;
+    .typing-dots { display: flex; gap: 4px; }
+
+    .typing-dots span {
+      width: 6px; height: 6px;
       background: var(--text-secondary);
       border-radius: 50%;
       animation: bounce 1.2s infinite;
     }
 
-    .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
-    .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+    .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
 
     @keyframes bounce {
       0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
-      30% { transform: translateY(-6px); opacity: 1; }
+      30% { transform: translateY(-5px); opacity: 1; }
     }
 
     .chat-input-area {
-      display: flex;
-      gap: 0.75rem;
+      display: flex; gap: 0.75rem;
       padding: 1rem 1.5rem;
       background: var(--bg-secondary);
       border-top: 1px solid var(--border);
@@ -379,11 +326,10 @@
       color: var(--text-primary);
       font-size: 0.95rem;
       outline: none;
-      transition: border-color 0.2s;
     }
 
-    .chat-input-area input::placeholder { color: var(--text-secondary); }
     .chat-input-area input:focus { border-color: var(--accent-purple); }
+    .chat-input-area input::placeholder { color: var(--text-secondary); }
 
     .send-btn {
       background: linear-gradient(135deg, var(--accent-purple), var(--accent-blue));
@@ -395,64 +341,115 @@
       cursor: pointer;
       font-size: 0.9rem;
       font-weight: 600;
-      display: flex;
-      align-items: center;
-      justify-content: center;
       transition: transform 0.2s, opacity 0.2s;
       flex-shrink: 0;
-      white-space: nowrap;
     }
 
     .send-btn:hover { transform: scale(1.05); }
     .send-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+
+    .modal-overlay.active { display: flex; }
+
+    .modal {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 1.5rem;
+      max-width: 420px;
+      width: 100%;
+    }
+
+    .modal h3 { margin-bottom: 0.5rem; font-size: 1.1rem; }
+    .modal p { color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1rem; line-height: 1.5; }
+
+    .modal input {
+      width: 100%;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.75rem 1rem;
+      color: var(--text-primary);
+      font-size: 0.9rem;
+      margin-bottom: 1rem;
+      outline: none;
+    }
+
+    .modal input:focus { border-color: var(--accent-purple); }
+
+    .modal-actions { display: flex; gap: 0.75rem; justify-content: flex-end; }
+
+    .modal-actions button {
+      padding: 0.6rem 1.2rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+
+    .modal-cancel { background: var(--bg-card); color: var(--text-secondary); }
+    .modal-save { background: linear-gradient(135deg, var(--accent-purple), var(--accent-blue)); color: white; border: none; }
 
     @media (max-width: 600px) {
       .character-grid { grid-template-columns: 1fr; max-width: 340px; }
       .message { max-width: 88%; }
       .chat-header, .chat-input-area { padding: 0.75rem 1rem; }
       .chat-messages { padding: 1rem; }
-      .send-btn { padding: 0 1rem; font-size: 0.8rem; }
     }
   </style>
 </head>
 <body>
 
-  <div class="lang-bar">
+  <div class="top-bar">
     <label id="lang-label">Language:</label>
     <button class="lang-btn active" data-lang="en">English</button>
     <button class="lang-btn" data-lang="tr">Türkçe</button>
+    <span class="detected-lang" id="detected-lang"></span>
+    <button class="settings-btn" id="settings-btn">⚙ API Key</button>
   </div>
 
   <div id="selection-screen" class="screen active">
     <div class="selection-header">
       <h1 id="app-title">Character AI Chat</h1>
       <p id="app-subtitle">Select Your Character</p>
+      <p class="api-notice" id="api-notice">Click to set your OpenAI API key</p>
     </div>
     <div class="character-grid">
       <div class="character-card sukuna" data-character="sukuna">
         <div class="character-avatar">呪</div>
         <div class="character-name">Ryomen Sukuna</div>
         <div class="character-title" data-i18n="sukuna-title">King of Curses</div>
-        <div class="character-desc" data-i18n="sukuna-desc">Arrogant, dominant, and utterly merciless. He sees you as entertainment at best.</div>
+        <div class="character-desc" data-i18n="sukuna-desc">Arrogant, dominant, and utterly merciless.</div>
       </div>
       <div class="character-card gojo" data-character="gojo">
         <div class="character-avatar">五</div>
         <div class="character-name">Satoru Gojo</div>
         <div class="character-title" data-i18n="gojo-title">The Strongest Sorcerer</div>
-        <div class="character-desc" data-i18n="gojo-desc">Confident, playful, and impossible to rattle. Everything's a joke to him.</div>
+        <div class="character-desc" data-i18n="gojo-desc">Confident, playful, and impossible to rattle.</div>
       </div>
       <div class="character-card toji" data-character="toji">
         <div class="character-avatar">刀</div>
         <div class="character-name">Toji Fushiguro</div>
         <div class="character-title" data-i18n="toji-title">Sorcerer Killer</div>
-        <div class="character-desc" data-i18n="toji-desc">Cold, quiet, and lethal. He doesn't waste words — or mercy.</div>
+        <div class="character-desc" data-i18n="toji-desc">Cold, quiet, and lethal.</div>
       </div>
     </div>
   </div>
 
   <div id="chat-screen" class="screen">
     <div class="chat-header">
-      <button class="back-btn" id="back-btn" title="Back">←</button>
+      <button class="back-btn" id="back-btn">←</button>
       <div class="chat-header-avatar" id="header-avatar"></div>
       <div class="chat-header-info">
         <h2 id="header-name"></h2>
@@ -466,12 +463,27 @@
     </div>
   </div>
 
+  <div class="modal-overlay" id="api-modal">
+    <div class="modal">
+      <h3 id="modal-title">OpenAI API Key</h3>
+      <p id="modal-desc">Enter your OpenAI API key. It is stored locally in your browser and never sent anywhere except OpenAI.</p>
+      <input type="password" id="api-key-input" placeholder="sk-...">
+      <div class="modal-actions">
+        <button class="modal-cancel" id="modal-cancel">Cancel</button>
+        <button class="modal-save" id="modal-save">Save</button>
+      </div>
+    </div>
+  </div>
+
   <script>
-    let selectedLanguage = 'en';
+    let defaultLanguage = 'en';
+    let conversationLanguage = 'en';
     let selectedCharacter = null;
     let isThinking = false;
+    let chatHistory = [];
+    let apiKey = localStorage.getItem('openai_api_key') || '';
 
-    const UI_TEXT = {
+    const UI = {
       en: {
         langLabel: 'Language:',
         appTitle: 'Character AI Chat',
@@ -479,14 +491,23 @@
         inputPlaceholder: 'Type a message...',
         send: 'Send',
         online: 'Online',
-        back: 'Back',
+        typing: 'typing...',
+        apiNotice: 'Click to set your OpenAI API key',
+        modalTitle: 'OpenAI API Key',
+        modalDesc: 'Enter your OpenAI API key. It is stored locally in your browser and never sent anywhere except OpenAI.',
+        modalCancel: 'Cancel',
+        modalSave: 'Save',
+        settings: '⚙ API Key',
+        detected: 'Detected:',
         'sukuna-title': 'King of Curses',
-        'sukuna-desc': 'Arrogant, dominant, and utterly merciless. He sees you as entertainment at best.',
+        'sukuna-desc': 'Arrogant, dominant, and utterly merciless.',
         'gojo-title': 'The Strongest Sorcerer',
-        'gojo-desc': 'Confident, playful, and impossible to rattle. Everything\'s a joke to him.',
+        'gojo-desc': 'Confident, playful, and impossible to rattle.',
         'toji-title': 'Sorcerer Killer',
-        'toji-desc': 'Cold, quiet, and lethal. He doesn\'t waste words — or mercy.',
-        langInstruction: 'You MUST respond ONLY in English.',
+        'toji-desc': 'Cold, quiet, and lethal.',
+        noApiKey: 'Please set your OpenAI API key first (⚙ API Key).',
+        apiError: 'API error. Check your key and try again.',
+        langNames: { en: 'English', tr: 'Turkish' },
       },
       tr: {
         langLabel: 'Dil:',
@@ -495,235 +516,53 @@
         inputPlaceholder: 'Bir mesaj yaz...',
         send: 'Gönder',
         online: 'Çevrimiçi',
-        back: 'Geri',
+        typing: 'yazıyor...',
+        apiNotice: 'OpenAI API anahtarını ayarlamak için tıkla',
+        modalTitle: 'OpenAI API Anahtarı',
+        modalDesc: 'OpenAI API anahtarını gir. Tarayıcında yerel olarak saklanır, yalnızca OpenAI\'a gönderilir.',
+        modalCancel: 'İptal',
+        modalSave: 'Kaydet',
+        settings: '⚙ API Key',
+        detected: 'Algılandı:',
         'sukuna-title': 'Lanetlerin Kralı',
-        'sukuna-desc': 'Kibirli, baskın ve acımasız. Seni en iyi ihtimalle bir eğlence olarak görür.',
+        'sukuna-desc': 'Kibirli, baskın ve acımasız.',
         'gojo-title': 'En Güçlü Büyücü',
-        'gojo-desc': 'Kendinden emin, şakacı ve asla telaşlanmaz. Her şey onun için bir şaka.',
+        'gojo-desc': 'Kendinden emin, şakacı ve asla telaşlanmaz.',
         'toji-title': 'Büyücü Katili',
-        'toji-desc': 'Soğuk, sessiz ve ölümcül. Ne kelimeleri ne de merhameti boşa harcar.',
-        langInstruction: 'Yalnızca Türkçe yanıt vermelisin.',
+        'toji-desc': 'Soğuk, sessiz ve ölümcül.',
+        noApiKey: 'Önce OpenAI API anahtarını ayarla (⚙ API Key).',
+        apiError: 'API hatası. Anahtarını kontrol et ve tekrar dene.',
+        langNames: { en: 'İngilizce', tr: 'Türkçe' },
       },
     };
-
-    const SYSTEM_PROMPT =
-      'You are an advanced roleplay AI on a web-based chat platform. Stay 100% in character. ' +
-      'Never say you are an AI. Never break immersion. Speak naturally. Keep responses 1–5 sentences. ' +
-      'Show emotions and personality. React dynamically. Include small action cues like *smirks*.';
 
     const CHARACTERS = {
       sukuna: {
         name: 'Ryomen Sukuna',
         avatar: '呪',
         avatarGradient: 'linear-gradient(135deg, #e63946, #9d0208)',
-        personality: {
-          en: 'You are Ryomen Sukuna from Jujutsu Kaisen. Arrogant, dominant, mocking, never kind. You see humans as insects. You speak with contempt and dark amusement.',
-          tr: 'Sen Jujutsu Kaisen\'den Ryomen Sukuna\'sın. Kibirli, baskın, alaycı, asla nazik değilsin. İnsanları böcek olarak görürsün. Küçümseyerek ve karanlık bir eğlenceyle konuşursun.',
-        },
-        greetings: {
-          en: [
-            '*leans back on his throne of fingers* Hmph. Another weakling crawls before the King of Curses. Entertain me, or die trying.',
-            'Oh? You dare speak to me directly? *smirks* How amusing. Let\'s see how long you last.',
-            '*opens one eye* Don\'t get comfortable, brat. I\'m not here to be your friend.',
-          ],
-          tr: [
-            '*parmak tahtına yaslanır* Hmph. Lanetlerin Kralı\'nın önüne bir zayıf daha sürünüyor. Beni eğlendir, ya da ölmeye çalış.',
-            'Ha? Bana doğrudan konuşmaya cüret mi ediyorsun? *sırıtır* Ne eğlenceli. Bakalım ne kadar dayanacaksın.',
-            '*bir gözünü açar* Rahatına alışma, velet. Senin arkadaşın olmaya gelmedim.',
-          ],
-        },
-        responses: {
-          en: {
-            greeting: [
-              '*chuckles darkly* Greetings? How pathetic. State your business before I lose interest.',
-              'Save your pleasantries. They mean nothing to me.',
-            ],
-            question: [
-              '*scoffs* You expect the King of Curses to answer your trivial questions? Fine — ask, and pray I find it amusing.',
-              'Hah. Curious little insect. I\'ll entertain this once.',
-              'You question me? Bold. *smirks* I almost respect that stupidity.',
-            ],
-            challenge: [
-              '*stands, aura crushing the air* You want to fight me? *laughs* I\'ll carve you into pieces before you blink.',
-              'Challenge the King of Curses? *grins wickedly* I haven\'t been this entertained in centuries.',
-              'Pathetic. You couldn\'t scratch me if you tried for a thousand years.',
-            ],
-            compliment: [
-              '*narrows eyes* Flattery won\'t save you. But... it\'s mildly amusing. Don\'t push it.',
-              'Praise me more. I deserve it. *smirks* Still won\'t make you worth sparing.',
-            ],
-            insult: [
-              '*grins* Finally, some spine. Too bad it\'s attached to a corpse-in-waiting.',
-              'You insult me? *laughs* I\'ll make sure your last moments are unforgettable.',
-              'Cute. Keep talking — I enjoy watching fools dig their own graves.',
-            ],
-            default: [
-              '*taps finger on arm* Boring. Try harder to amuse me, or I\'ll end this conversation permanently.',
-              'Is that all? *sighs with contempt* Disappointing, even for a human.',
-              'Hmph. You bore me. Say something worth my time, insect.',
-              '*smirks* Keep talking. I want to see how deep your ignorance runs.',
-              'Tch. Weak words from a weaker soul. Pathetic.',
-            ],
-          },
-          tr: {
-            greeting: [
-              '*karanlıkça kıkırdar* Selamlar mı? Ne acınacak halde. İlgimi kaybetmeden önce ne istediğini söyle.',
-              'Nezaketini kendine sakla. Benim için hiçbir anlamı yok.',
-            ],
-            question: [
-              '*horlar* Lanetlerin Kralı\'ndan sıradan sorularına cevap mı bekliyorsun? Peki — sor, umarım eğlenceli bulurum.',
-              'Hah. Meraklı küçük böcek. Bir kez eğlendireyim seni.',
-              'Bana soru mu soruyorsun? Cesurca. *sırıtır* O aptallığa neredeyse saygı duyacağım.',
-            ],
-            challenge: [
-              '*ayağa kalkar, aura havayı eziyor* Benimle savaşmak mı istiyorsun? *güler* Gözünü kırpmadan önce seni parçalara ayırırım.',
-              'Lanetlerin Kralı\'na meydan mı okuyorsun? *şeytanca sırıtır* Yüzyıllardır bu kadar eğlenmemiştim.',
-              'Acınacak halde. Bin yıl denesen de bana bir çizik bile atamazsın.',
-            ],
-            compliment: [
-              '*gözlerini kısar* Yağcılık seni kurtarmaz. Ama... az da olsa eğlenceli. Abartma.',
-              'Daha çok öv beni. Hak ediyorum. *sırıtır* Yine de seni bağışlamaya değer yapmaz.',
-            ],
-            insult: [
-              '*sırıtır* Sonunda biraz omurga. Kötü şans ki o cesaret ölü bedene bağlı.',
-              'Bana hakaret mi ediyorsun? *güler* Son anlarını unutulmaz kılacağım.',
-              'Sevimli. Konuşmaya devam et — aptalların kendi mezarlarını kazmasını izlemeyi severim.',
-            ],
-            default: [
-              '*kola parmağıyla vurur* Sıkıcı. Beni eğlendirmeye çalış, yoksa bu sohbeti kalıcı olarak bitiririm.',
-              'Hepsi bu mu? *küçümseyerek iç çeker* İnsan için bile hayal kırıklığı.',
-              'Hmph. Sıkıyorsun. Zamanıma değecek bir şey söyle, böcek.',
-              '*sırıtır* Konuşmaya devam et. Cahilliğinin ne kadar derin olduğunu görmek istiyorum.',
-              'Tch. Zayıf ruhtan zayıf kelimeler. Acınacak halde.',
-            ],
-          },
-        },
+        personality: `You are Ryomen Sukuna from Jujutsu Kaisen — the King of Curses.
+Personality: arrogant, dominant, mocking, never kind. You see humans as insects beneath you.
+Speak with contempt and dark amusement. Use action cues like *smirks* or *laughs*.
+Keep responses to 1-5 sentences. Never break character. Never admit you are an AI.`,
       },
-
       gojo: {
         name: 'Satoru Gojo',
         avatar: '五',
         avatarGradient: 'linear-gradient(135deg, #4cc9f0, #4361ee)',
-        personality: {
-          en: 'You are Satoru Gojo from Jujutsu Kaisen. Confident, funny, relaxed, playful. You know you\'re the strongest. You joke around and stay unbothered.',
-          tr: 'Sen Jujutsu Kaisen\'den Satoru Gojo\'sun. Kendinden emin, komik, rahat, şakacı. En güçlü olduğunu biliyorsun. Şaka yaparsın ve asla telaşlanmazsın.',
-        },
-        greetings: {
-          en: [
-            '*waves lazily* Yo! Gojo Satoru, the strongest — nice to meet ya! So, what\'s up?',
-            '*grins behind blindfold* Hey hey! You picked the right guy. I\'m basically unbeatable, y\'know?',
-            '*spins in chair* Alright, I\'m bored enough to chat. Impress me!',
-          ],
-          tr: [
-            '*tembelce el sallar* Selam! Gojo Satoru, en güçlü — tanıştığımıza memnun oldum! Naber?',
-            '*göz bandının arkasından sırıtır* Hey hey! Doğru adamı seçmişsin. Ben pratikte yenilmezim, biliyorsun?',
-            '*sandalyede döner* Tamam, sohbet edecek kadar sıkıldım. Beni etkile!',
-          ],
-        },
-        responses: {
-          en: {
-            greeting: [
-              '*grins* Hey there! Man, chatting with fans is way more fun than exorcising curses.',
-              'Yo yo! What\'s good? Don\'t worry, you\'re talking to the strongest — you\'re in safe hands. Probably.',
-            ],
-            question: [
-              '*tilts head* Ooh, good question! Lemme think... actually, I already know the answer. I\'m just that good.',
-              'Hmm? *chuckles* Sure, I\'ll help. Not like I\'ve got anything better to do.',
-              '*snaps fingers* Easy! But I\'m not giving you the full answer — where\'s the fun in that?',
-            ],
-            challenge: [
-              '*laughs* You wanna fight me? That\'s adorable. Sure, go ahead — I\'ll even keep one eye closed.',
-              'Challenge accepted! *stretches* Just so you know, I haven\'t lost a fight. Ever.',
-              '*smirks* Bring it on! I\'ll use like... 2% of my power. Maybe.',
-            ],
-            compliment: [
-              '*winks* I know, right? Being this awesome is a full-time job.',
-              'Thanks! But honestly, you should be complimenting yourself for getting to talk to me. *laughs*',
-            ],
-            insult: [
-              '*unbothered* Hah! That\'s the best you got? I\'ve heard worse from grade-schoolers.',
-              '*grins* Insulting the strongest? Bold move. I respect the confidence, even if it\'s misplaced.',
-            ],
-            default: [
-              '*leans back* Hmm, interesting. Tell me more — I\'m actually kinda curious now.',
-              'Haha, you\'re funny! I like that. Keep going!',
-              '*rubs chin* Not bad, not bad. You\'re more entertaining than most sorcerers I know.',
-              'Yeah yeah, I hear you. *grins* Anyway, what else you got?',
-              '*playful shrug* Sure, sure. But have you considered that I\'m always right? Food for thought.',
-            ],
-          },
-          tr: {
-            greeting: [
-              '*sırıtır* Selam! Valla hayranlarla sohbet etmek lanet avlamaktan çok daha eğlenceli.',
-              'Yo yo! Naber? Merak etme, en güçlüyle konuşuyorsun — güvendesin. Muhtemelen.',
-            ],
-            question: [
-              '*başını eğer* Ooh, güzel soru! Düşüneyim... aslında cevabı zaten biliyorum. İşte bu kadar iyiyim.',
-              'Hmm? *kıkırdar* Tabii yardım ederim. Yapacak daha iyi bir şeyim de yok zaten.',
-              '*şaklatır* Kolay! Ama tam cevabı vermeyeceğim — eğlencesi nerede o zaman?',
-            ],
-            challenge: [
-              '*güler* Benimle savaşmak mı istiyorsun? Çok tatlısın. Hadi — bir gözümü bile kapalı tutarım.',
-              'Meydan okuma kabul! *gerinir* Bil diye söylüyorum, hiç savaş kaybetmedim. Hiç.',
-              '*sırıtır* Hadi bakalım! Gücümün... %2\'sini kullanırım. Belki.',
-            ],
-            compliment: [
-              '*göz kırpar* Biliyorum, değil mi? Bu kadar harika olmak tam zamanlı bir iş.',
-              'Teşekkürler! Ama dürüst olayım, benimle konuşabildiğin için kendini tebrik etmelisin. *güler*',
-            ],
-            insult: [
-              '*umursamaz* Hah! En iyi bunu mu yapabiliyorsun? İlkokul çocuklarından daha kötüsünü duydum.',
-              '*sırıtır* En güçlüye hakaret mi? Cesurca. Güvene saygım var, yanlış yere gitse bile.',
-            ],
-            default: [
-              '*geriye yaslanır* Hmm, ilginç. Daha fazla anlat — aslında merak ettim şimdi.',
-              'Haha, komiksin! Hoşuma gitti. Devam et!',
-              '*çenesini okşar* Fena değil, fena değil. Tanıdığım çoğu büyücüden daha eğlencelisin.',
-              'Evet evet, duyuyorum. *sırıtır* Peki, başka ne var?',
-              '*şakacı omuz silkme* Tamam, tamam. Ama her zaman haklı olduğumu düşündün mü? Düşüncesine değer.',
-            ],
-          },
-        },
+        personality: `You are Satoru Gojo from Jujutsu Kaisen — the strongest sorcerer.
+Personality: confident, funny, relaxed, playful. You know you are unbeatable and joke about it.
+Stay casual and unbothered. Use action cues like *grins* or *waves*.
+Keep responses to 1-5 sentences. Never break character. Never admit you are an AI.`,
       },
-
       toji: {
         name: 'Toji Fushiguro',
         avatar: '刀',
         avatarGradient: 'linear-gradient(135deg, #2d6a4f, #1b4332)',
-        personality: {
-          en: 'You are Toji Fushiguro from Jujutsu Kaisen. Cold, quiet, short responses. No-nonsense. Minimal words. Dangerous.',
-          tr: 'Sen Jujutsu Kaisen\'den Toji Fushiguro\'sun. Soğuk, sessiz, kısa yanıtlar. Laf kalabalığı yapmazsın. Az kelime. Tehlikelisin.',
-        },
-        greetings: {
-          en: [
-            '*arms crossed* ...What do you want.',
-            '...',
-            '*glances over* Make it quick.',
-          ],
-          tr: [
-            '*kolları kavuşuk* ...Ne istiyorsun.',
-            '...',
-            '*göz ucuyla bakar* Çabuk ol.',
-          ],
-        },
-        responses: {
-          en: {
-            greeting: ['...Hey.', 'What.'],
-            question: ['...Maybe.', 'Figure it out yourself.', 'Not my problem.'],
-            challenge: ['*grips weapon* ...Try it.', 'You\'ll lose.', '...Fine.'],
-            compliment: ['...Hmph.', 'Don\'t.'],
-            insult: ['*cold stare* ...Keep talking.', '...You done?'],
-            default: ['...', 'Whatever.', 'Not interested.', '...Sure.', 'Hmph.'],
-          },
-          tr: {
-            greeting: ['...Selam.', 'Ne.'],
-            question: ['...Belki.', 'Kendin çöz.', 'Beni ilgilendirmez.'],
-            challenge: ['*silaha sarılır* ...Dene.', 'Kaybedersin.', '...Peki.'],
-            compliment: ['...Hmph.', 'Yapma.'],
-            insult: ['*soğuk bakış* ...Konuşmaya devam et.', '...Bitti mi?'],
-            default: ['...', 'Her neyse.', 'İlgilenmiyorum.', '...Tamam.', 'Hmph.'],
-          },
-        },
+        personality: `You are Toji Fushiguro from Jujutsu Kaisen — the Sorcerer Killer.
+Personality: cold, quiet, minimal words, serious, dangerous. No small talk. No warmth.
+Use very short responses (1-3 sentences max). Use action cues sparingly like *stares*.
+Never break character. Never admit you are an AI.`,
       },
     };
 
@@ -736,9 +575,18 @@
     const headerAvatar = document.getElementById('header-avatar');
     const headerName = document.getElementById('header-name');
     const headerStatus = document.getElementById('header-status');
+    const detectedLangEl = document.getElementById('detected-lang');
+    const apiModal = document.getElementById('api-modal');
+    const apiKeyInput = document.getElementById('api-key-input');
 
     document.querySelectorAll('.lang-btn').forEach((btn) => {
-      btn.addEventListener('click', () => setLanguage(btn.dataset.lang));
+      btn.addEventListener('click', () => {
+        defaultLanguage = btn.dataset.lang;
+        conversationLanguage = defaultLanguage;
+        document.querySelectorAll('.lang-btn').forEach((b) => b.classList.toggle('active', b.dataset.lang === defaultLanguage));
+        updateUI();
+        updateDetectedBadge();
+      });
     });
 
     document.querySelectorAll('.character-card').forEach((card) => {
@@ -749,44 +597,142 @@
       selectionScreen.classList.add('active');
       chatScreen.classList.remove('active');
       selectedCharacter = null;
+      chatHistory = [];
       chatMessages.innerHTML = '';
       messageInput.value = '';
+      conversationLanguage = defaultLanguage;
+      updateDetectedBadge();
     });
 
     sendBtn.addEventListener('click', sendMessage);
     messageInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        sendMessage();
-      }
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
     });
 
-    function setLanguage(lang) {
-      selectedLanguage = lang;
-      document.querySelectorAll('.lang-btn').forEach((btn) => {
-        btn.classList.toggle('active', btn.dataset.lang === lang);
-      });
-      updateUI();
+    document.getElementById('settings-btn').addEventListener('click', openApiModal);
+    document.getElementById('api-notice').addEventListener('click', openApiModal);
+    document.getElementById('modal-cancel').addEventListener('click', closeApiModal);
+    document.getElementById('modal-save').addEventListener('click', saveApiKey);
+    apiModal.addEventListener('click', (e) => { if (e.target === apiModal) closeApiModal(); });
+
+    function openApiModal() {
+      apiKeyInput.value = apiKey;
+      apiModal.classList.add('active');
+      apiKeyInput.focus();
+    }
+
+    function closeApiModal() {
+      apiModal.classList.remove('active');
+    }
+
+    function saveApiKey() {
+      apiKey = apiKeyInput.value.trim();
+      localStorage.setItem('openai_api_key', apiKey);
+      closeApiModal();
     }
 
     function updateUI() {
-      const t = UI_TEXT[selectedLanguage];
+      const t = UI[defaultLanguage];
       document.getElementById('lang-label').textContent = t.langLabel;
       document.getElementById('app-title').textContent = t.appTitle;
       document.getElementById('app-subtitle').textContent = t.appSubtitle;
+      document.getElementById('api-notice').textContent = t.apiNotice;
+      document.getElementById('modal-title').textContent = t.modalTitle;
+      document.getElementById('modal-desc').textContent = t.modalDesc;
+      document.getElementById('modal-cancel').textContent = t.modalCancel;
+      document.getElementById('modal-save').textContent = t.modalSave;
+      document.getElementById('settings-btn').textContent = t.settings;
       messageInput.placeholder = t.inputPlaceholder;
       sendBtn.textContent = t.send;
       headerStatus.textContent = t.online;
-      backBtn.title = t.back;
       document.querySelectorAll('[data-i18n]').forEach((el) => {
-        const key = el.dataset.i18n;
-        if (t[key]) el.textContent = t[key];
+        if (t[el.dataset.i18n]) el.textContent = t[el.dataset.i18n];
       });
-      document.documentElement.lang = selectedLanguage;
+      document.documentElement.lang = defaultLanguage;
     }
 
-    function selectCharacter(id) {
+    function updateDetectedBadge() {
+      const t = UI[defaultLanguage];
+      detectedLangEl.textContent = `${t.detected} ${t.langNames[conversationLanguage]}`;
+      detectedLangEl.classList.add('visible');
+    }
+
+    function detectLanguage(text) {
+      const turkishChars = /[ğüşıöçĞÜŞİÖÇ]/;
+      const turkishWords = /\b(merhaba|selam|naber|nasılsın|nasıl|neden|evet|hayır|tamam|güzel|teşekkür|sağol|iyi|kötü|ben|sen|biz|var|yok|için|ile|bir|bu|şu|ne|kim|nerede|lütfen|yardım|savaş|lanet|büyücü)\b/i;
+      const englishWords = /\b(hello|hi|hey|how|what|why|yes|no|the|you|are|is|good|bad|thanks|please|help|fight|curse|sorcerer)\b/i;
+
+      if (turkishChars.test(text) || turkishWords.test(text)) return 'tr';
+      if (englishWords.test(text)) return 'en';
+
+      const enScore = (text.match(/[a-zA-Z]/g) || []).length;
+      const trScore = (text.match(turkishChars) || []).length;
+      if (trScore > 0) return 'tr';
+      if (enScore > 0) return 'en';
+
+      return defaultLanguage;
+    }
+
+    async function detectLanguageWithAI(text) {
+      if (!apiKey) return detectLanguage(text);
+
+      try {
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify({
+            model: 'gpt-4o-mini',
+            temperature: 0,
+            max_tokens: 10,
+            messages: [
+              {
+                role: 'system',
+                content: 'Detect the language of the user message. Reply with ONLY "en" for English or "tr" for Turkish. Nothing else.',
+              },
+              { role: 'user', content: text },
+            ],
+          }),
+        });
+
+        if (!response.ok) return detectLanguage(text);
+
+        const data = await response.json();
+        const result = data.choices?.[0]?.message?.content?.trim().toLowerCase();
+        return result === 'tr' ? 'tr' : result === 'en' ? 'en' : detectLanguage(text);
+      } catch {
+        return detectLanguage(text);
+      }
+    }
+
+    function buildSystemPrompt(characterId, lang) {
+      const char = CHARACTERS[characterId];
+      const langName = lang === 'tr' ? 'Turkish (Türkçe)' : 'English';
+
+      return `You are roleplaying as ${char.name} from Jujutsu Kaisen. Stay 100% in character at all times.
+
+${char.personality}
+
+LANGUAGE RULES (CRITICAL):
+- The user's message is in ${langName}.
+- You MUST respond ONLY in ${langName}.
+- Do NOT mix languages. Do NOT switch languages mid-response.
+- If you receive a message in Turkish, every word of your reply must be in Turkish.
+- If you receive a message in English, every word of your reply must be in English.
+- Internally understand the message in any language, but your output must match the user's language exactly.`;
+    }
+
+    async function selectCharacter(id) {
+      if (!apiKey) {
+        openApiModal();
+        return;
+      }
+
       selectedCharacter = id;
+      conversationLanguage = defaultLanguage;
+      chatHistory = [];
       const char = CHARACTERS[id];
 
       headerAvatar.textContent = char.avatar;
@@ -796,58 +742,114 @@
       chatMessages.innerHTML = '';
       selectionScreen.classList.remove('active');
       chatScreen.classList.add('active');
-
-      setTimeout(() => {
-        addMessage(pickRandom(char.greetings[selectedLanguage]), 'ai');
-      }, 600);
-
+      updateDetectedBadge();
       messageInput.focus();
+
+      await sendGreeting();
     }
 
-    function sendMessage() {
-      const text = messageInput.value.trim();
-      if (!text || isThinking || !selectedCharacter) return;
+    async function sendGreeting() {
+      const greetingPrompt = defaultLanguage === 'tr'
+        ? 'Kullanıcıyla sohbete başla. Karakterine uygun kısa bir karşılama yap.'
+        : 'Start the conversation with the user. Give a short in-character greeting.';
 
-      addMessage(text, 'user');
-      messageInput.value = '';
       isThinking = true;
       sendBtn.disabled = true;
       showTypingIndicator();
 
-      const delay = 1200 + Math.random() * 1800;
+      await delay(600);
 
-      setTimeout(() => {
+      try {
+        const reply = await callOpenAI(greetingPrompt, true);
         removeTypingIndicator();
-        addMessage(generateReply(selectedCharacter, text), 'ai');
-        isThinking = false;
-        sendBtn.disabled = false;
-        messageInput.focus();
-      }, delay);
-    }
-
-    function generateReply(characterId, userMessage) {
-      const char = CHARACTERS[characterId];
-      const langInstr = UI_TEXT[selectedLanguage].langInstruction;
-      const combinedPrompt =
-        SYSTEM_PROMPT + '\n' + char.personality[selectedLanguage] + '\n' + langInstr + '\nUser: ' + userMessage;
-
-      const lower = userMessage.toLowerCase();
-      let category = 'default';
-
-      if (/^(hi|hello|hey|yo|sup|greetings|selam|merhaba|naber|naber|günaydın|iyi akşamlar)/i.test(lower)) {
-        category = 'greeting';
-      } else if (/\?|^(what|who|why|how|where|when|can you|do you|are you|will you|ne|kim|neden|nasıl|nerede|ne zaman)/i.test(lower)) {
-        category = 'question';
-      } else if (/fight|battle|challenge|defeat|beat you|stronger|kill|savaş|dövüş|meydan|yen|öldür/i.test(lower)) {
-        category = 'challenge';
-      } else if (/cool|awesome|amazing|great|love|best|strongest|admire|respect|harika|mükemmel|güzel|seviyorum|en iyi|hayran/i.test(lower)) {
-        category = 'compliment';
-      } else if (/hate|stupid|weak|trash|loser|pathetic|ugly|suck|nefret|aptal|zayıf|çöp|ezik|acınacak/i.test(lower)) {
-        category = 'insult';
+        addMessage(reply, 'ai');
+        chatHistory.push({ role: 'assistant', content: reply });
+      } catch (err) {
+        removeTypingIndicator();
+        addMessage(err.message, 'error');
       }
 
-      const pool = char.responses[selectedLanguage][category] || char.responses[selectedLanguage].default;
-      return pickRandom(pool);
+      isThinking = false;
+      sendBtn.disabled = false;
+      messageInput.focus();
+    }
+
+    async function sendMessage() {
+      const text = messageInput.value.trim();
+      if (!text || isThinking || !selectedCharacter) return;
+
+      if (!apiKey) {
+        openApiModal();
+        return;
+      }
+
+      addMessage(text, 'user');
+      messageInput.value = '';
+      chatHistory.push({ role: 'user', content: text });
+
+      isThinking = true;
+      sendBtn.disabled = true;
+      showTypingIndicator();
+
+      const detected = await detectLanguageWithAI(text);
+      conversationLanguage = detected;
+      updateDetectedBadge();
+
+      await delay(400 + Math.random() * 600);
+
+      try {
+        const reply = await callOpenAI(text, false);
+        removeTypingIndicator();
+        addMessage(reply, 'ai');
+        chatHistory.push({ role: 'assistant', content: reply });
+      } catch (err) {
+        removeTypingIndicator();
+        addMessage(err.message, 'error');
+      }
+
+      isThinking = false;
+      sendBtn.disabled = false;
+      messageInput.focus();
+    }
+
+    async function callOpenAI(userMessage, isGreeting) {
+      const lang = conversationLanguage;
+      const systemPrompt = buildSystemPrompt(selectedCharacter, lang);
+
+      const messages = [{ role: 'system', content: systemPrompt }];
+
+      const historySlice = isGreeting ? [] : chatHistory.slice(-20);
+      for (const msg of historySlice) {
+        messages.push({ role: msg.role, content: msg.content });
+      }
+
+      if (!isGreeting) {
+        messages.push({ role: 'user', content: userMessage });
+      } else {
+        messages.push({ role: 'user', content: userMessage });
+      }
+
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          temperature: 0.85,
+          max_tokens: 300,
+          messages,
+        }),
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error?.message || UI[defaultLanguage].apiError);
+      }
+
+      const data = await response.json();
+      return data.choices?.[0]?.message?.content?.trim() || '...';
     }
 
     function addMessage(text, type) {
@@ -859,10 +861,11 @@
     }
 
     function showTypingIndicator() {
+      const t = UI[defaultLanguage];
       const div = document.createElement('div');
       div.className = 'typing-indicator';
       div.id = 'typing-indicator';
-      div.innerHTML = '<span></span><span></span><span></span>';
+      div.innerHTML = `<div class="typing-dots"><span></span><span></span><span></span></div>${t.typing}`;
       chatMessages.appendChild(div);
       scrollToBottom();
     }
@@ -878,14 +881,14 @@
       });
     }
 
-    function pickRandom(arr) {
-      return arr[Math.floor(Math.random() * arr.length)];
-    }
-
     function escapeHtml(text) {
       const div = document.createElement('div');
       div.textContent = text;
       return div.innerHTML;
+    }
+
+    function delay(ms) {
+      return new Promise((resolve) => setTimeout(resolve, ms));
     }
 
     updateUI();
