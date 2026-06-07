@@ -401,6 +401,29 @@
     .modal-cancel { background: var(--bg-card); color: var(--text-secondary); }
     .modal-save { background: linear-gradient(135deg, var(--accent-purple), var(--accent-blue)); color: white; border: none; }
 
+    .modal-error {
+      color: #ff8a93;
+      font-size: 0.8rem;
+      margin-bottom: 0.75rem;
+      min-height: 1.2em;
+    }
+
+    .mode-badge {
+      font-size: 0.75rem;
+      padding: 0.25rem 0.6rem;
+      border-radius: 6px;
+      background: rgba(157, 78, 221, 0.15);
+      color: var(--accent-purple);
+    }
+
+    .error-action {
+      margin-top: 0.5rem;
+      font-size: 0.8rem;
+      color: var(--accent-blue);
+      cursor: pointer;
+      text-decoration: underline;
+    }
+
     @media (max-width: 600px) {
       .character-grid { grid-template-columns: 1fr; max-width: 340px; }
       .message { max-width: 88%; }
@@ -416,6 +439,7 @@
     <button class="lang-btn active" data-lang="en">English</button>
     <button class="lang-btn" data-lang="tr">Türkçe</button>
     <span class="detected-lang" id="detected-lang"></span>
+    <span class="mode-badge" id="mode-badge">Demo</span>
     <button class="settings-btn" id="settings-btn">⚙ API Key</button>
   </div>
 
@@ -467,7 +491,8 @@
     <div class="modal">
       <h3 id="modal-title">OpenAI API Key</h3>
       <p id="modal-desc">Enter your OpenAI API key. It is stored locally in your browser and never sent anywhere except OpenAI.</p>
-      <input type="password" id="api-key-input" placeholder="sk-...">
+      <p class="modal-error" id="modal-error"></p>
+      <input type="password" id="api-key-input" placeholder="sk-..." autocomplete="off">
       <div class="modal-actions">
         <button class="modal-cancel" id="modal-cancel">Cancel</button>
         <button class="modal-save" id="modal-save">Save</button>
@@ -481,7 +506,20 @@
     let selectedCharacter = null;
     let isThinking = false;
     let chatHistory = [];
-    let apiKey = localStorage.getItem('openai_api_key') || '';
+    let useDemoMode = true;
+    let apiKey = '';
+
+    function loadApiKey() {
+      const stored = localStorage.getItem('openai_api_key') || '';
+      return isValidApiKey(stored) ? stored : '';
+    }
+
+    function isValidApiKey(key) {
+      return typeof key === 'string' && /^sk-[A-Za-z0-9_-]{20,}$/.test(key.trim());
+    }
+
+    apiKey = loadApiKey();
+    useDemoMode = !apiKey;
 
     const UI = {
       en: {
@@ -494,7 +532,7 @@
         typing: 'typing...',
         apiNotice: 'Click to set your OpenAI API key',
         modalTitle: 'OpenAI API Key',
-        modalDesc: 'Enter your OpenAI API key. It is stored locally in your browser and never sent anywhere except OpenAI.',
+        modalDesc: 'Enter your OpenAI API key (starts with sk-). Without a key, demo mode works automatically. Key is stored only in your browser.',
         modalCancel: 'Cancel',
         modalSave: 'Save',
         settings: '⚙ API Key',
@@ -507,6 +545,12 @@
         'toji-desc': 'Cold, quiet, and lethal.',
         noApiKey: 'Please set your OpenAI API key first (⚙ API Key).',
         apiError: 'API error. Check your key and try again.',
+        invalidKey: 'Invalid API key. It must start with "sk-" and come from platform.openai.com',
+        invalidKeySaved: 'The saved API key is invalid. Running in demo mode.',
+        fixKey: 'Fix API key',
+        demoMode: 'Demo',
+        aiMode: 'AI',
+        keySaved: 'API key saved. AI mode enabled.',
         langNames: { en: 'English', tr: 'Turkish' },
       },
       tr: {
@@ -532,7 +576,46 @@
         'toji-desc': 'Soğuk, sessiz ve ölümcül.',
         noApiKey: 'Önce OpenAI API anahtarını ayarla (⚙ API Key).',
         apiError: 'API hatası. Anahtarını kontrol et ve tekrar dene.',
+        invalidKey: 'Geçersiz API anahtarı. "sk-" ile başlamalı ve platform.openai.com adresinden alınmalı.',
+        invalidKeySaved: 'Kayıtlı API anahtarı geçersiz. Demo modunda çalışıyor.',
+        fixKey: 'API anahtarını düzelt',
+        demoMode: 'Demo',
+        aiMode: 'AI',
+        keySaved: 'API anahtarı kaydedildi. AI modu aktif.',
         langNames: { en: 'İngilizce', tr: 'Türkçe' },
+      },
+    };
+
+    const MOCK = {
+      sukuna: {
+        en: {
+          greeting: ['*smirks* Another insect dares to speak to the King of Curses. Entertain me.', '*leans back* Hmph. Make this worth my time, weakling.'],
+          default: ['*scoffs* Pathetic. Try harder to amuse me.', 'Is that all? Disappointing, even for a human.', 'Hmph. You bore me, insect.'],
+        },
+        tr: {
+          greeting: ['*sırıtır* Lanetlerin Kralı\'na konuşmaya cüret eden bir böcek daha. Beni eğlendir.', '*geriye yaslanır* Hmph. Zamanıma değ, zayıf.'],
+          default: ['*horlar* Acınacak halde. Beni eğlendirmeye çalış.', 'Hepsi bu mu? İnsan için bile hayal kırıklığı.', 'Hmph. Sıkıyorsun, böcek.'],
+        },
+      },
+      gojo: {
+        en: {
+          greeting: ['*waves* Yo! Gojo Satoru, the strongest — what\'s up?', '*grins* Hey! You picked the right guy. I\'m unbeatable, y\'know?'],
+          default: ['*grins* Haha, interesting! Tell me more.', 'Not bad! You\'re kinda fun to talk to.', '*leans back* Yeah yeah, I hear you.'],
+        },
+        tr: {
+          greeting: ['*el sallar* Selam! Gojo Satoru, en güçlü — naber?', '*sırıtır* Hey! Doğru adamı seçmişsin. Yenilmezim, biliyorsun?'],
+          default: ['*sırıtır* Haha, ilginç! Daha fazla anlat.', 'Fena değil! Seninle konuşmak eğlenceli.', '*geriye yaslanır* Evet evet, duyuyorum.'],
+        },
+      },
+      toji: {
+        en: {
+          greeting: ['*arms crossed* ...What do you want.', '*glances over* Make it quick.'],
+          default: ['...', 'Whatever.', 'Not interested.'],
+        },
+        tr: {
+          greeting: ['*kolları kavuşuk* ...Ne istiyorsun.', '*göz ucuyla bakar* Çabuk ol.'],
+          default: ['...', 'Her neyse.', 'İlgilenmiyorum.'],
+        },
       },
     };
 
@@ -578,6 +661,8 @@ Never break character. Never admit you are an AI.`,
     const detectedLangEl = document.getElementById('detected-lang');
     const apiModal = document.getElementById('api-modal');
     const apiKeyInput = document.getElementById('api-key-input');
+    const modalError = document.getElementById('modal-error');
+    const modeBadge = document.getElementById('mode-badge');
 
     document.querySelectorAll('.lang-btn').forEach((btn) => {
       btn.addEventListener('click', () => {
@@ -617,18 +702,92 @@ Never break character. Never admit you are an AI.`,
 
     function openApiModal() {
       apiKeyInput.value = apiKey;
+      modalError.textContent = '';
       apiModal.classList.add('active');
       apiKeyInput.focus();
     }
 
     function closeApiModal() {
       apiModal.classList.remove('active');
+      modalError.textContent = '';
     }
 
     function saveApiKey() {
-      apiKey = apiKeyInput.value.trim();
-      localStorage.setItem('openai_api_key', apiKey);
+      const key = apiKeyInput.value.trim();
+      if (key && !isValidApiKey(key)) {
+        modalError.textContent = UI[defaultLanguage].invalidKey;
+        return;
+      }
+
+      apiKey = key;
+      if (apiKey) {
+        localStorage.setItem('openai_api_key', apiKey);
+        useDemoMode = false;
+      } else {
+        localStorage.removeItem('openai_api_key');
+        useDemoMode = true;
+      }
+
+      updateModeBadge();
       closeApiModal();
+    }
+
+    function clearInvalidApiKey() {
+      apiKey = '';
+      useDemoMode = true;
+      localStorage.removeItem('openai_api_key');
+      updateModeBadge();
+    }
+
+    function formatApiError(rawMessage) {
+      const t = UI[defaultLanguage];
+      const msg = (rawMessage || '').toLowerCase();
+
+      if (msg.includes('incorrect api key') || msg.includes('invalid api key') || msg.includes('invalid_api_key')) {
+        clearInvalidApiKey();
+        return t.invalidKey;
+      }
+      if (msg.includes('insufficient_quota') || msg.includes('quota')) {
+        return defaultLanguage === 'tr'
+          ? 'API kotası doldu. OpenAI hesabını kontrol et veya demo modunu kullan.'
+          : 'API quota exceeded. Check your OpenAI account or use demo mode.';
+      }
+      if (msg.includes('rate limit')) {
+        return defaultLanguage === 'tr'
+          ? 'Çok fazla istek. Biraz bekle ve tekrar dene.'
+          : 'Rate limit reached. Wait a moment and try again.';
+      }
+      return t.apiError;
+    }
+
+    function updateModeBadge() {
+      const t = UI[defaultLanguage];
+      modeBadge.textContent = useDemoMode ? t.demoMode : t.aiMode;
+      modeBadge.style.background = useDemoMode
+        ? 'rgba(157, 78, 221, 0.15)'
+        : 'rgba(76, 201, 240, 0.15)';
+      modeBadge.style.color = useDemoMode ? 'var(--accent-purple)' : 'var(--accent-blue)';
+    }
+
+    function generateMockReply(characterId, isGreeting) {
+      const lang = conversationLanguage;
+      const pool = MOCK[characterId][lang];
+      const list = isGreeting ? pool.greeting : pool.default;
+      return list[Math.floor(Math.random() * list.length)];
+    }
+
+    function addErrorMessage(message) {
+      const t = UI[defaultLanguage];
+      const div = document.createElement('div');
+      div.className = 'message error';
+      div.innerHTML = `
+        <div class="message-bubble">
+          ${escapeHtml(message)}
+          <div class="error-action" data-action="fix-key">${escapeHtml(t.fixKey)}</div>
+        </div>`;
+      div.querySelector('[data-action="fix-key"]').addEventListener('click', openApiModal);
+      chatMessages.appendChild(div);
+      scrollToBottom();
     }
 
     function updateUI() {
@@ -649,6 +808,7 @@ Never break character. Never admit you are an AI.`,
         if (t[el.dataset.i18n]) el.textContent = t[el.dataset.i18n];
       });
       document.documentElement.lang = defaultLanguage;
+      updateModeBadge();
     }
 
     function updateDetectedBadge() {
@@ -674,7 +834,7 @@ Never break character. Never admit you are an AI.`,
     }
 
     async function detectLanguageWithAI(text) {
-      if (!apiKey) return detectLanguage(text);
+      if (useDemoMode || !isValidApiKey(apiKey)) return detectLanguage(text);
 
       try {
         const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -725,9 +885,9 @@ LANGUAGE RULES (CRITICAL):
     }
 
     async function selectCharacter(id) {
-      if (!apiKey) {
-        openApiModal();
-        return;
+      if (!isValidApiKey(apiKey)) {
+        useDemoMode = true;
+        if (localStorage.getItem('openai_api_key')) clearInvalidApiKey();
       }
 
       selectedCharacter = id;
@@ -760,13 +920,18 @@ LANGUAGE RULES (CRITICAL):
       await delay(600);
 
       try {
-        const reply = await callOpenAI(greetingPrompt, true);
+        const reply = useDemoMode
+          ? generateMockReply(selectedCharacter, true)
+          : await callOpenAI(greetingPrompt, true);
         removeTypingIndicator();
         addMessage(reply, 'ai');
         chatHistory.push({ role: 'assistant', content: reply });
       } catch (err) {
         removeTypingIndicator();
-        addMessage(err.message, 'error');
+        const fallback = generateMockReply(selectedCharacter, true);
+        addMessage(fallback, 'ai');
+        chatHistory.push({ role: 'assistant', content: fallback });
+        addErrorMessage(formatApiError(err.message));
       }
 
       isThinking = false;
@@ -777,11 +942,6 @@ LANGUAGE RULES (CRITICAL):
     async function sendMessage() {
       const text = messageInput.value.trim();
       if (!text || isThinking || !selectedCharacter) return;
-
-      if (!apiKey) {
-        openApiModal();
-        return;
-      }
 
       addMessage(text, 'user');
       messageInput.value = '';
@@ -798,13 +958,18 @@ LANGUAGE RULES (CRITICAL):
       await delay(400 + Math.random() * 600);
 
       try {
-        const reply = await callOpenAI(text, false);
+        const reply = useDemoMode
+          ? generateMockReply(selectedCharacter, false)
+          : await callOpenAI(text, false);
         removeTypingIndicator();
         addMessage(reply, 'ai');
         chatHistory.push({ role: 'assistant', content: reply });
       } catch (err) {
         removeTypingIndicator();
-        addMessage(err.message, 'error');
+        const fallback = generateMockReply(selectedCharacter, false);
+        addMessage(fallback, 'ai');
+        chatHistory.push({ role: 'assistant', content: fallback });
+        addErrorMessage(formatApiError(err.message));
       }
 
       isThinking = false;
@@ -813,6 +978,10 @@ LANGUAGE RULES (CRITICAL):
     }
 
     async function callOpenAI(userMessage, isGreeting) {
+      if (!isValidApiKey(apiKey)) {
+        useDemoMode = true;
+        throw new Error('invalid_api_key');
+      }
       const lang = conversationLanguage;
       const systemPrompt = buildSystemPrompt(selectedCharacter, lang);
 
@@ -845,7 +1014,9 @@ LANGUAGE RULES (CRITICAL):
 
       if (!response.ok) {
         const err = await response.json().catch(() => ({}));
-        throw new Error(err.error?.message || UI[defaultLanguage].apiError);
+        const code = err.error?.code || '';
+        const message = err.error?.message || UI[defaultLanguage].apiError;
+        throw new Error(code ? `${code}: ${message}` : message);
       }
 
       const data = await response.json();
@@ -889,6 +1060,10 @@ LANGUAGE RULES (CRITICAL):
 
     function delay(ms) {
       return new Promise((resolve) => setTimeout(resolve, ms));
+    }
+
+    if (localStorage.getItem('openai_api_key') && !isValidApiKey(localStorage.getItem('openai_api_key'))) {
+      clearInvalidApiKey();
     }
 
     updateUI();
