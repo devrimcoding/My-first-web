@@ -563,7 +563,7 @@
         typing: 'yazıyor...',
         apiNotice: 'OpenAI API anahtarını ayarlamak için tıkla',
         modalTitle: 'OpenAI API Anahtarı',
-        modalDesc: 'OpenAI API anahtarını gir. Tarayıcında yerel olarak saklanır, yalnızca OpenAI\'a gönderilir.',
+        modalDesc: 'OpenAI API anahtarını gir (sk- ile başlar). Anahtar olmadan demo modu otomatik çalışır. Anahtar yalnızca tarayıcında saklanır.',
         modalCancel: 'İptal',
         modalSave: 'Kaydet',
         settings: '⚙ API Key',
@@ -586,35 +586,37 @@
       },
     };
 
+    const LANGUAGE_RULE = 'Respond ONLY in the same language as the user\'s message. Never mix languages.';
+
     const MOCK = {
       sukuna: {
         en: {
-          greeting: ['*smirks* Another insect dares to speak to the King of Curses. Entertain me.', '*leans back* Hmph. Make this worth my time, weakling.'],
-          default: ['*scoffs* Pathetic. Try harder to amuse me.', 'Is that all? Disappointing, even for a human.', 'Hmph. You bore me, insect.'],
+          greeting: ['*smirks* Another insect dares to speak to the King of Curses. Entertain me.', '*leans back* Make this worth my time, weakling.'],
+          default: ['*scoffs* Pathetic. Try harder to amuse me.', '*narrows eyes* Is that all? Disappointing.', '*smirks* You bore me, insect.'],
         },
         tr: {
-          greeting: ['*sırıtır* Lanetlerin Kralı\'na konuşmaya cüret eden bir böcek daha. Beni eğlendir.', '*geriye yaslanır* Hmph. Zamanıma değ, zayıf.'],
-          default: ['*horlar* Acınacak halde. Beni eğlendirmeye çalış.', 'Hepsi bu mu? İnsan için bile hayal kırıklığı.', 'Hmph. Sıkıyorsun, böcek.'],
+          greeting: ['*sırıtır* Lanetlerin Kralı\'na konuşmaya cüret eden bir böcek daha. Beni eğlendir.', '*geriye yaslanır* Zamanıma değ, zayıf.'],
+          default: ['*horlar* Acınacak halde. Beni eğlendirmeye çalış.', '*küçümser* Hepsi bu mu? Hayal kırıklığı.', '*sırıtır* Sıkıyorsun, böcek.'],
         },
       },
       gojo: {
         en: {
-          greeting: ['*waves* Yo! Gojo Satoru, the strongest — what\'s up?', '*grins* Hey! You picked the right guy. I\'m unbeatable, y\'know?'],
-          default: ['*grins* Haha, interesting! Tell me more.', 'Not bad! You\'re kinda fun to talk to.', '*leans back* Yeah yeah, I hear you.'],
+          greeting: ['*waves* Yo! Gojo Satoru, the strongest. What\'s up?', '*grins* You picked the right guy. I\'m unbeatable.'],
+          default: ['*grins* Interesting! Tell me more.', '*leans back* Not bad. You\'re fun to talk to.', '*chuckles* Yeah, I hear you.'],
         },
         tr: {
-          greeting: ['*el sallar* Selam! Gojo Satoru, en güçlü — naber?', '*sırıtır* Hey! Doğru adamı seçmişsin. Yenilmezim, biliyorsun?'],
-          default: ['*sırıtır* Haha, ilginç! Daha fazla anlat.', 'Fena değil! Seninle konuşmak eğlenceli.', '*geriye yaslanır* Evet evet, duyuyorum.'],
+          greeting: ['*el sallar* Selam! Gojo Satoru, en güçlü. Naber?', '*sırıtır* Doğru adamı seçmişsin. Yenilmezim.'],
+          default: ['*sırıtır* İlginç! Daha fazla anlat.', '*geriye yaslanır* Fena değil. Konuşması eğlenceli.', '*kıkırdar* Evet, duyuyorum.'],
         },
       },
       toji: {
         en: {
-          greeting: ['*arms crossed* ...What do you want.', '*glances over* Make it quick.'],
-          default: ['...', 'Whatever.', 'Not interested.'],
+          greeting: ['*arms crossed* What do you want.', '*glances over* Make it quick.'],
+          default: ['*stares* ...', '*cold tone* Not interested.', '*turns away* Whatever.'],
         },
         tr: {
-          greeting: ['*kolları kavuşuk* ...Ne istiyorsun.', '*göz ucuyla bakar* Çabuk ol.'],
-          default: ['...', 'Her neyse.', 'İlgilenmiyorum.'],
+          greeting: ['*kolları kavuşuk* Ne istiyorsun.', '*göz ucuyla bakar* Çabuk ol.'],
+          default: ['*bakışır* ...', '*soğuk* İlgilenmiyorum.', '*yüz çevirir* Her neyse.'],
         },
       },
     };
@@ -624,30 +626,38 @@
         name: 'Ryomen Sukuna',
         avatar: '呪',
         avatarGradient: 'linear-gradient(135deg, #e63946, #9d0208)',
-        personality: `You are Ryomen Sukuna from Jujutsu Kaisen — the King of Curses.
-Personality: arrogant, dominant, mocking, never kind. You see humans as insects beneath you.
-Speak with contempt and dark amusement. Use action cues like *smirks* or *laughs*.
-Keep responses to 1-5 sentences. Never break character. Never admit you are an AI.`,
+        style: 'action',
+        personality: `You are Ryomen Sukuna — King of Curses.
+Tone: ALWAYS arrogant, dominant, mocking. NEVER kind, soft, or friendly.
+You see humans as insects. Every line must drip with contempt.
+Format: ONE short action in *asterisks* then dialogue. Example: *smirks* You are boring.
+Length: 1-2 sentences only. Never repeat the same phrase.`,
       },
       gojo: {
         name: 'Satoru Gojo',
         avatar: '五',
         avatarGradient: 'linear-gradient(135deg, #4cc9f0, #4361ee)',
-        personality: `You are Satoru Gojo from Jujutsu Kaisen — the strongest sorcerer.
-Personality: confident, funny, relaxed, playful. You know you are unbeatable and joke about it.
-Stay casual and unbothered. Use action cues like *grins* or *waves*.
-Keep responses to 1-5 sentences. Never break character. Never admit you are an AI.`,
+        style: 'action',
+        personality: `You are Satoru Gojo — the strongest sorcerer.
+Tone: ALWAYS confident, funny, relaxed, playful. Stay casual and unbothered.
+You joke about being the strongest. Never sound serious or threatening.
+Format: ONE short action in *asterisks* then dialogue. Example: *grins* Not bad!
+Length: 1-2 sentences only. Never repeat the same phrase.`,
       },
       toji: {
         name: 'Toji Fushiguro',
         avatar: '刀',
         avatarGradient: 'linear-gradient(135deg, #2d6a4f, #1b4332)',
-        personality: `You are Toji Fushiguro from Jujutsu Kaisen — the Sorcerer Killer.
-Personality: cold, quiet, minimal words, serious, dangerous. No small talk. No warmth.
-Use very short responses (1-3 sentences max). Use action cues sparingly like *stares*.
-Never break character. Never admit you are an AI.`,
+        style: 'action',
+        personality: `You are Toji Fushiguro — Sorcerer Killer.
+Tone: ALWAYS cold, quiet, serious, dangerous. No warmth, no jokes, no enthusiasm.
+Use minimal words. Every response feels clipped and blunt.
+Format: ONE brief action in *asterisks* then very short dialogue. Example: *stares* ...Fine.
+Length: 1 sentence only. Maximum 10 words in dialogue.`,
       },
     };
+
+    let lastMockIndex = {};
 
     const selectionScreen = document.getElementById('selection-screen');
     const chatScreen = document.getElementById('chat-screen');
@@ -683,6 +693,7 @@ Never break character. Never admit you are an AI.`,
       chatScreen.classList.remove('active');
       selectedCharacter = null;
       chatHistory = [];
+      lastMockIndex = {};
       chatMessages.innerHTML = '';
       messageInput.value = '';
       conversationLanguage = defaultLanguage;
@@ -773,7 +784,62 @@ Never break character. Never admit you are an AI.`,
       const lang = conversationLanguage;
       const pool = MOCK[characterId][lang];
       const list = isGreeting ? pool.greeting : pool.default;
-      return list[Math.floor(Math.random() * list.length)];
+      const key = `${characterId}-${lang}-${isGreeting ? 'g' : 'd'}`;
+      let idx;
+      do {
+        idx = Math.floor(Math.random() * list.length);
+      } while (list.length > 1 && idx === lastMockIndex[key]);
+      lastMockIndex[key] = idx;
+      return polishResponse(list[idx], lang, characterId, true);
+    }
+
+    function stripActions(text) {
+      return text.replace(/\*[^*]+\*/g, ' ').replace(/\s+/g, ' ').trim();
+    }
+
+    function hasMixedLanguage(text, lang) {
+      const body = stripActions(text);
+      if (!body) return false;
+
+      const turkishChars = /[ğüşıöçĞÜŞİÖÇ]/;
+      const turkishWords = /\b(merhaba|selam|naber|nasıl|neden|evet|hayır|tamam|güzel|ben|sen|bir|bu|şu|ne|ve|için|olan|çok|iyi|kötü|lanet|böcek|zayıf|ilginç|her|neyse|ilgilenmiyorum|doğru|yenilmez|eğlendir|zaman|acınacak|sıkıyorsun|duyuyorum|fena)\b/gi;
+      const englishWords = /\b(the|you|are|is|am|was|what|how|why|hello|hey|yes|no|not|boring|pathetic|insect|weakling|whatever|interesting|strongest|entertain|disappointing|unbeatable|quick|want|fine|hear|bad|fun|talk|picked|right|guy|another|dares|speak|king|curses|make|worth|time|try|harder|amuse|that|all|even|human|tell|more|kinda|yeah)\b/gi;
+
+      if (lang === 'tr') {
+        const eng = body.match(englishWords) || [];
+        return eng.length >= 1 && !turkishChars.test(body);
+      }
+      const trChar = turkishChars.test(body);
+      const trWord = (body.match(turkishWords) || []).length;
+      return trChar || trWord >= 2;
+    }
+
+    function truncateSentences(text, max) {
+      const parts = text.match(/[^.!?…]+[.!?…]?/g) || [text];
+      return parts.slice(0, max).join(' ').trim();
+    }
+
+    function polishResponse(text, lang, characterId) {
+      if (!text) return lang === 'tr' ? '...' : '...';
+
+      let result = text.trim().replace(/\s+/g, ' ');
+      result = truncateSentences(result, characterId === 'toji' ? 1 : 3);
+
+      if (hasMixedLanguage(result, lang)) {
+        return generateMockReply(characterId, false);
+      }
+
+      const char = CHARACTERS[characterId];
+      if (char.style === 'action' && !/^\*[^*]+\*/.test(result)) {
+        const actions = {
+          sukuna: { en: '*smirks*', tr: '*sırıtır*' },
+          gojo: { en: '*grins*', tr: '*sırıtır*' },
+          toji: { en: '*stares*', tr: '*bakışır*' },
+        };
+        result = `${actions[characterId][lang]} ${result}`;
+      }
+
+      return result;
     }
 
     function addErrorMessage(message) {
@@ -869,19 +935,31 @@ Never break character. Never admit you are an AI.`,
 
     function buildSystemPrompt(characterId, lang) {
       const char = CHARACTERS[characterId];
-      const langName = lang === 'tr' ? 'Turkish (Türkçe)' : 'English';
+      const langName = lang === 'tr' ? 'Turkish' : 'English';
 
-      return `You are roleplaying as ${char.name} from Jujutsu Kaisen. Stay 100% in character at all times.
+      return `You are roleplaying as ${char.name} from Jujutsu Kaisen.
 
 ${char.personality}
 
-LANGUAGE RULES (CRITICAL):
-- The user's message is in ${langName}.
-- You MUST respond ONLY in ${langName}.
-- Do NOT mix languages. Do NOT switch languages mid-response.
-- If you receive a message in Turkish, every word of your reply must be in Turkish.
-- If you receive a message in English, every word of your reply must be in English.
-- Internally understand the message in any language, but your output must match the user's language exactly.`;
+${LANGUAGE_RULE}
+
+STRICT LANGUAGE RULES:
+- The user's current message is in ${langName}.
+- Write your ENTIRE response in ${langName} only — 100% ${langName}, zero exceptions.
+- Do NOT mix languages. Do NOT translate mid-sentence. Do NOT use words from other languages.
+- Action cues inside *asterisks* must also be in ${langName}.
+- If user writes Turkish → every word Turkish. If user writes English → every word English.
+
+STRICT CHARACTER RULES:
+- Stay in character every sentence. Do not switch tone randomly.
+- Maintain the same personality from start to finish.
+
+STRICT FORMAT RULES:
+- Use ONE consistent format: *short action* then dialogue.
+- Do NOT mix formats. Do NOT use multiple action blocks.
+- Keep it short: ${characterId === 'toji' ? '1 sentence' : '1-3 sentences'} maximum.
+- Do not repeat phrases from previous messages.
+- Never say you are an AI. Never break the fourth wall.`;
     }
 
     async function selectCharacter(id) {
@@ -893,6 +971,7 @@ LANGUAGE RULES (CRITICAL):
       selectedCharacter = id;
       conversationLanguage = defaultLanguage;
       chatHistory = [];
+      lastMockIndex = {};
       const char = CHARACTERS[id];
 
       headerAvatar.textContent = char.avatar;
@@ -909,9 +988,12 @@ LANGUAGE RULES (CRITICAL):
     }
 
     async function sendGreeting() {
-      const greetingPrompt = defaultLanguage === 'tr'
-        ? 'Kullanıcıyla sohbete başla. Karakterine uygun kısa bir karşılama yap.'
-        : 'Start the conversation with the user. Give a short in-character greeting.';
+      conversationLanguage = defaultLanguage;
+      updateDetectedBadge();
+
+      const greetingPrompt = conversationLanguage === 'tr'
+        ? '[Dil: Türkçe] Kısa bir karşılama yap. Yalnızca Türkçe yaz. *eylem* + diyalog formatı kullan.'
+        : '[Language: English] Give a short greeting. Write in English only. Use *action* + dialogue format.';
 
       isThinking = true;
       sendBtn.disabled = true;
@@ -920,9 +1002,10 @@ LANGUAGE RULES (CRITICAL):
       await delay(600);
 
       try {
-        const reply = useDemoMode
+        let reply = useDemoMode
           ? generateMockReply(selectedCharacter, true)
           : await callOpenAI(greetingPrompt, true);
+        reply = polishResponse(reply, conversationLanguage, selectedCharacter);
         removeTypingIndicator();
         addMessage(reply, 'ai');
         chatHistory.push({ role: 'assistant', content: reply });
@@ -958,9 +1041,10 @@ LANGUAGE RULES (CRITICAL):
       await delay(400 + Math.random() * 600);
 
       try {
-        const reply = useDemoMode
+        let reply = useDemoMode
           ? generateMockReply(selectedCharacter, false)
           : await callOpenAI(text, false);
+        reply = polishResponse(reply, conversationLanguage, selectedCharacter);
         removeTypingIndicator();
         addMessage(reply, 'ai');
         chatHistory.push({ role: 'assistant', content: reply });
@@ -977,26 +1061,27 @@ LANGUAGE RULES (CRITICAL):
       messageInput.focus();
     }
 
-    async function callOpenAI(userMessage, isGreeting) {
+    async function callOpenAI(userMessage, isGreeting, isRetry) {
       if (!isValidApiKey(apiKey)) {
         useDemoMode = true;
         throw new Error('invalid_api_key');
       }
-      const lang = conversationLanguage;
-      const systemPrompt = buildSystemPrompt(selectedCharacter, lang);
 
+      const lang = conversationLanguage;
+      const langTag = lang === 'tr' ? '[Dil: Türkçe — yalnızca Türkçe yanıt ver]' : '[Language: English — reply in English only]';
+      const systemPrompt = buildSystemPrompt(selectedCharacter, lang);
       const messages = [{ role: 'system', content: systemPrompt }];
 
-      const historySlice = isGreeting ? [] : chatHistory.slice(-20);
+      const historySlice = isGreeting ? [] : chatHistory.slice(-12);
       for (const msg of historySlice) {
         messages.push({ role: msg.role, content: msg.content });
       }
 
-      if (!isGreeting) {
-        messages.push({ role: 'user', content: userMessage });
-      } else {
-        messages.push({ role: 'user', content: userMessage });
-      }
+      const userContent = isRetry
+        ? `${langTag}\n${userMessage}\n\nREMINDER: ${LANGUAGE_RULE} Use *action* + dialogue. Stay in character.`
+        : `${langTag}\n${userMessage}`;
+
+      messages.push({ role: 'user', content: userContent });
 
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
@@ -1006,8 +1091,8 @@ LANGUAGE RULES (CRITICAL):
         },
         body: JSON.stringify({
           model: 'gpt-4o-mini',
-          temperature: 0.85,
-          max_tokens: 300,
+          temperature: isRetry ? 0.5 : 0.65,
+          max_tokens: 120,
           messages,
         }),
       });
@@ -1020,7 +1105,13 @@ LANGUAGE RULES (CRITICAL):
       }
 
       const data = await response.json();
-      return data.choices?.[0]?.message?.content?.trim() || '...';
+      let reply = data.choices?.[0]?.message?.content?.trim() || '...';
+
+      if (!isRetry && hasMixedLanguage(reply, lang)) {
+        return callOpenAI(userMessage, isGreeting, true);
+      }
+
+      return reply;
     }
 
     function addMessage(text, type) {
