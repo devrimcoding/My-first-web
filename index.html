@@ -810,28 +810,117 @@ Always respond DIRECTLY to what the user just said. Answer questions bluntly. Ac
     function classifyMessage(text) {
       const lower = text.toLowerCase().trim();
 
-      if (/^(hi|hello|hey|yo|sup|greetings|selam|merhaba|naber|sa|slm|günaydın|iyi akşamlar|iyi geceler|good\s*(morning|evening|night))/i.test(lower)) {
-        return 'greeting';
-      }
-      if (/\?|^(what|who|why|how|where|when|can you|do you|are you|will you|ne|kim|neden|nasıl|nerede|ne zaman|kaç|hangi|musun|misin|mısın|müsün|bilir\s*misin|anlat)/i.test(lower)) {
-        return 'question';
+      if (/salak|aptal|mal\b|gerizekalı|ahmak|bok|siktir|orospu|nefret|hate|stupid|idiot|dumb|loser|trash|pathetic|weak|zayıf|çöp|ezik|berbat|ugly|suck/i.test(lower)) {
+        return 'insult';
       }
       if (/fight|battle|challenge|defeat|beat you|stronger|kill|savaş|dövüş|meydan|yen|öldür|dövüşelim/i.test(lower)) {
         return 'challenge';
       }
-      if (/cool|awesome|amazing|great|love|best|strongest|admire|respect|harika|mükemmel|güzel|seviyorum|en iyi|hayran|güçlü/i.test(lower)) {
+      if (
+        /\?/.test(lower) ||
+        /\b(mısın|misin|musun|müsün|miyim|misiniz|mu|mi)\b/i.test(lower) ||
+        /\b(ne|kim|neden|nasıl|nerede|ne zaman|kaç|hangi|niye|niçin)\b/i.test(lower) ||
+        /\b(what|who|why|how|where|when|are you|do you|can you|will you)\b/i.test(lower) ||
+        /\b(peki|seninki|ya sen|sen nasıl|senin nasıl|seni nasıl|bende|bana ne|anlat|söyle|bilir)\b/i.test(lower)
+      ) {
+        return 'question';
+      }
+      if (/^(selam|merhaba|naber|slm|günaydın|iyi akşamlar|iyi geceler|hi|hello|hey|yo|sup|greetings)\b/i.test(lower) ||
+          /^(selam|merhaba|naber|hi|hello|hey)$/i.test(lower)) {
+        return 'greeting';
+      }
+      if (/\b(harika|mükemmel|seviyorum|hayran|awesome|amazing|love|admire|respect)\b/i.test(lower) &&
+          !/\b(peki|seninki|nasıl|mısın|misin)\b/i.test(lower)) {
         return 'compliment';
       }
-      if (/hate|stupid|weak|trash|loser|pathetic|ugly|suck|nefret|aptal|zayıf|çöp|ezik|acınacak|berbat/i.test(lower)) {
-        return 'insult';
+      if (/\bgüzel\b/i.test(lower) && /\b(peki|seninki|ya sen)\b/i.test(lower)) {
+        return 'question';
       }
       return 'default';
     }
 
+    function getMessageTopic(text) {
+      const lower = text.toLowerCase().trim();
+      if (/\b(nasılsın|nasılsın|keyif|naber|nasıl gidiyor|how are you|how'?s it going|how you doing)\b/i.test(lower)) return 'howAreYou';
+      if (/\b(peki seninki|ya sen|sen nasıl|senin nasıl|seni nasıl|what about you|and you|your turn)\b/i.test(lower)) return 'howAreYou';
+      if (/\b(kim|who)\b/i.test(lower) && /\b(en güçlü|strongest|güçlü|powerful)\b/i.test(lower)) return 'whoStrongest';
+      if (/\b(salak|aptal|stupid|dumb|idiot)\b/i.test(lower)) return 'calledStupid';
+      if (/\b(seviyor|love|like)\b/i.test(lower)) return 'feelings';
+      if (/\b(kaç|how old|yaş)\b/i.test(lower)) return 'age';
+      return 'general';
+    }
+
+    const SMART_REPLIES = {
+      gojo: {
+        tr: {
+          howAreYou: ['*gülümser* Ben mi? Harikayım tabii, en güçlü olan benim.', '*sırıtır* Bende her zamanki gibi mükemmel. Sen nasılsın?'],
+          whoStrongest: ['*göz kırpar* Tabii ki ben. Başka soru var mı?', '*sırıtır* Ben. Zaten biliyordun.'],
+          calledStupid: ['*kıkırdar* Salak mı? Hayır, sadece en güçlüyüm.', '*umursamaz* Hah, sen öyle san. Ben yenilmezim.'],
+          feelings: ['*sırıtır* Seviyor musun? Normal, herkes beni sever.', '*gülümser* Flört mü? Cesurca.'],
+          age: ['*omuz silkme* Yeterince genç ve yeterince güçlüyüm.', '*sırıtır* Yaşım mı? Önemli olan güç.'],
+        },
+        en: {
+          howAreYou: ['*grins* Me? I\'m awesome as always. Strongest, y\'know?', '*waves* Doing great! How about you?'],
+          whoStrongest: ['*winks* Me. Obviously. Any other questions?', '*grins* Me. You already knew that.'],
+          calledStupid: ['*laughs* Stupid? Nah, just the strongest.', '*unbothered* Hah, keep thinking that.'],
+          feelings: ['*grins* You like me? Can\'t blame you.', '*chuckles* Bold of you to say that.'],
+          age: ['*shrugs* Young enough to be the strongest.', '*grins* Age doesn\'t matter when you\'re me.'],
+        },
+      },
+      sukuna: {
+        tr: {
+          howAreYou: ['*sırıtır* Ben mi? Her zamanki gibi mükemmel. Sen endişelenme.', '*küçümser* Kralın keyfi yerinde. Sen nasılsın, böcek?'],
+          whoStrongest: ['*horlar* Ben. Başka aday bile yok.', '*sırıtır* Lanetlerin Kralı kim sanıyorsun?'],
+          calledStupid: ['*güler* Salak mı? Senin gibiler bana aptal der.', '*sırıtır* Beni küçümseme hakkın yok, velet.'],
+          feelings: ['*küçümser* Beni sevmek? Cesaret ister.', '*horlar* Böceklerin duyguları beni ilgilendirmez.'],
+          age: ['*sırıtır* Yüzyılların laneti. Yaşım seni aşar.', '*küçümser* Ne fark eder? Güç her şeydir.'],
+        },
+        en: {
+          howAreYou: ['*smirks* Me? Magnificent as always. Worry about yourself, insect.', '*scoffs* The King is well. And you?'],
+          whoStrongest: ['*laughs* Me. There is no contest.', '*smirks* Who do you think rules all curses?'],
+          calledStupid: ['*grins* Stupid? Coming from you, that\'s amusing.', '*scoffs* You dare insult the King of Curses?'],
+          feelings: ['*smirks* Love me? How pathetic.', '*scoffs* Your feelings mean nothing.'],
+          age: ['*smirks* Centuries old. Beyond your comprehension.', '*scoffs* Age is irrelevant when you\'re this powerful.'],
+        },
+      },
+      toji: {
+        tr: {
+          howAreYou: ['*omuz silkme* ...İyiyim.', '*bakışır* ...Sorun yok.'],
+          whoStrongest: ['*soğuk* ...Ben değilim. Ama seni öldürürüm.', '*duraksar* ...Gojo. Ama umurumda değil.'],
+          calledStupid: ['*soğuk bakış* ...Salak sensin.', '*bakışır* ...Konuşma.'],
+          feelings: ['*yüz çevirir* ...İlgilenmiyorum.', '*soğuk* ...Boş laf.'],
+          age: ['*duraksar* ...Yeterince yaşlıyım.', '*bakışır* ...Sana ne?'],
+        },
+        en: {
+          howAreYou: ['*shrugs* ...Fine.', '*stares* ...I\'m good.'],
+          whoStrongest: ['*cold* ...Not me. But I\'d kill you.', '*pauses* ...Gojo. Don\'t care.'],
+          calledStupid: ['*cold stare* ...You\'re the stupid one.', '*stares* ...Shut up.'],
+          feelings: ['*looks away* ...Don\'t care.', '*cold* ...Pointless.'],
+          age: ['*pauses* ...Old enough.', '*stares* ...None of your business.'],
+        },
+      },
+    };
+
     function generateMockReply(characterId, isGreeting, userMessage) {
       const lang = conversationLanguage;
+      const msg = userMessage || '';
+
+      if (!isGreeting) {
+        const topic = getMessageTopic(msg);
+        const smart = SMART_REPLIES[characterId]?.[lang]?.[topic];
+        if (smart) {
+          const key = `${characterId}-${lang}-smart-${topic}`;
+          let idx;
+          do {
+            idx = Math.floor(Math.random() * smart.length);
+          } while (smart.length > 1 && idx === lastMockIndex[key]);
+          lastMockIndex[key] = idx;
+          return polishResponse(smart[idx], lang, characterId, true);
+        }
+      }
+
       const pool = MOCK[characterId][lang];
-      const category = isGreeting ? 'greeting' : classifyMessage(userMessage || '');
+      const category = isGreeting ? 'greeting' : classifyMessage(msg);
       const list = pool[category] || pool.default;
       const key = `${characterId}-${lang}-${category}`;
       let idx;
@@ -1013,10 +1102,13 @@ STRICT FORMAT RULES:
 
 STRICT RESPONSE RULES (CRITICAL):
 - ALWAYS respond directly to the user's latest message.
+- Read the FULL conversation context. Remember what was said before.
 - If they greet you (hi, selam, merhaba) → greet them back in character.
-- If they ask a question → answer that specific question in character.
+- If they ask a question → answer that SPECIFIC question. Do not dodge it.
+- If they ask "what about you" / "peki sen" / "ya sen" → answer about YOURSELF.
+- If they insult you → react to the insult, do NOT greet again.
 - If they make a statement → react to that specific statement.
-- NEVER ignore what the user said. NEVER give random unrelated replies.`;
+- NEVER ignore what the user said. NEVER repeat a previous greeting. NEVER give random unrelated replies.`;
     }
 
     async function selectCharacter(id) {
@@ -1134,13 +1226,18 @@ STRICT RESPONSE RULES (CRITICAL):
         messages.push({ role: msg.role, content: msg.content });
       }
 
+      const contextLines = chatHistory.slice(-6).map((m) => {
+        const who = m.role === 'user' ? (lang === 'tr' ? 'Kullanıcı' : 'User') : (lang === 'tr' ? 'Sen' : 'You');
+        return `${who}: ${m.content}`;
+      }).join('\n');
+
       const answerRule = lang === 'tr'
-        ? 'Kullanıcının mesajına DOĞRUDAN cevap ver. Soru sorduysa cevapla. Selam verdiyse selamlaş.'
-        : 'Respond DIRECTLY to the user\'s message. Answer any question. Greet back if they greeted you.';
+        ? 'Son mesaja DOĞRUDAN cevap ver. Soru sorduysa o soruyu cevapla. "Peki sen" derse kendinden bahset. Hakaret ederse hakarete yanıt ver, tekrar selam verme. Önceki sohbeti dikkate al.'
+        : 'Reply DIRECTLY to the latest message. Answer the exact question asked. If they say "what about you", talk about yourself. If insulted, react to insult — do NOT greet again. Use conversation context.';
 
       const userContent = isRetry
-        ? `${langTag}\nUser message: "${userMessage}"\n${answerRule}\nREMINDER: ${LANGUAGE_RULE} Use *action* + dialogue. Stay in character.`
-        : `${langTag}\nUser message: "${userMessage}"\n${answerRule}`;
+        ? `${langTag}\n${contextLines ? `Sohbet:\n${contextLines}\n` : ''}Son mesaj: "${userMessage}"\n${answerRule}\nREMINDER: ${LANGUAGE_RULE} Use *action* + dialogue. Stay in character.`
+        : `${langTag}\n${contextLines ? `Conversation:\n${contextLines}\n` : ''}Latest message: "${userMessage}"\n${answerRule}`;
 
       messages.push({ role: 'user', content: userContent });
 
