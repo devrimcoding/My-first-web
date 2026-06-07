@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Anime & Game Character AI Chat</title>
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --bg-primary: #0a0a0f;
+      --bg-secondary: #12121a;
+      --bg-card: #1a1a28;
+      --bg-card-hover: #222236;
+      --accent-red: #e63946;
+      --accent-blue: #4cc9f0;
+      --accent-purple: #9d4edd;
+      --accent-green: #2d6a4f;
+      --text-primary: #f0f0f5;
+      --text-secondary: #a0a0b8;
+      --border: #2a2a3e;
+      --user-bubble: #3a3a5c;
+      --ai-bubble: #1e1e32;
+      --shadow: rgba(0, 0, 0, 0.5);
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Background effect */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse at 20% 20%, rgba(157, 78, 221, 0.08) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 80%, rgba(76, 201, 240, 0.06) 0%, transparent 50%),
+        radial-gradient(ellipse at 50% 50%, rgba(230, 57, 70, 0.04) 0%, transparent 60%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .screen {
+      display: none;
+      position: relative;
+      z-index: 1;
+      min-height: 100vh;
+    }
+
+    .screen.active {
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Character Selection ── */
+    #selection-screen {
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1.5rem;
+    }
+
+    .selection-header {
+      text-align: center;
+      margin-bottom: 3rem;
+    }
+
+    .selection-header h1 {
+      font-size: clamp(1.8rem, 5vw, 2.8rem);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple), var(--accent-red));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 0.5rem;
+    }
+
+    .selection-header p {
+      color: var(--text-secondary);
+      font-size: 1rem;
+    }
+
+    .character-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1.5rem;
+      max-width: 960px;
+      width: 100%;
+    }
+
+    .character-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 2rem 1.5rem;
+      cursor: pointer;
+      transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease, background 0.3s ease;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .character-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      border-radius: 16px;
+    }
+
+    .character-card.sukuna::before {
+      background: linear-gradient(135deg, rgba(230, 57, 70, 0.15), transparent);
+    }
+
+    .character-card.gojo::before {
+      background: linear-gradient(135deg, rgba(76, 201, 240, 0.15), transparent);
+    }
+
+    .character-card.toji::before {
+      background: linear-gradient(135deg, rgba(45, 106, 79, 0.15), transparent);
+    }
+
+    .character-card:hover {
+      transform: translateY(-6px);
+      background: var(--bg-card-hover);
+      box-shadow: 0 12px 40px var(--shadow);
+    }
+
+    .character-card.sukuna:hover { border-color: var(--accent-red); }
+    .character-card.gojo:hover { border-color: var(--accent-blue); }
+    .character-card.toji:hover { border-color: #52b788; }
+
+    .character-card:hover::before {
+      opacity: 1;
+    }
+
+    .character-avatar {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      margin: 0 auto 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.2rem;
+      font-weight: 900;
+      position: relative;
+      z-index: 1;
+    }
+
+    .character-card.sukuna .character-avatar {
+      background: linear-gradient(135deg, #e63946, #9d0208);
+      box-shadow: 0 0 20px rgba(230, 57, 70, 0.4);
+    }
+
+    .character-card.gojo .character-avatar {
+      background: linear-gradient(135deg, #4cc9f0, #4361ee);
+      box-shadow: 0 0 20px rgba(76, 201, 240, 0.4);
+    }
+
+    .character-card.toji .character-avatar {
+      background: linear-gradient(135deg, #2d6a4f, #1b4332);
+      box-shadow: 0 0 20px rgba(45, 106, 79, 0.4);
+    }
+
+    .character-name {
+      font-size: 1.4rem;
+      font-weight: 700;
+      margin-bottom: 0.4rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    .character-title {
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+      margin-bottom: 0.75rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    .character-desc {
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+      line-height: 1.5;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ── Chat Screen ── */
+    #chat-screen {
+      height: 100vh;
+    }
+
+    .chat-header {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 1rem 1.5rem;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .back-btn {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 1.1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s, color 0.2s, border-color 0.2s;
+    }
+
+    .back-btn:hover {
+      background: var(--bg-card);
+      color: var(--text-primary);
+      border-color: var(--text-secondary);
+    }
+
+    .chat-header-avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      font-weight: 800;
+      flex-shrink: 0;
+    }
+
+    .chat-header-info h2 {
+      font-size: 1.1rem;
+      font-weight: 700;
+    }
+
+    .chat-header-info span {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+    }
+
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      scroll-behavior: smooth;
+    }
+
+    .chat-messages::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .chat-messages::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .chat-messages::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 3px;
+    }
+
+    .message {
+      display: flex;
+      max-width: 75%;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .message.user {
+      align-self: flex-end;
+      flex-direction: row-reverse;
+    }
+
+    .message.ai {
+      align-self: flex-start;
+    }
+
+    .message-bubble {
+      padding: 0.75rem 1.1rem;
+      border-radius: 16px;
+      line-height: 1.5;
+      font-size: 0.95rem;
+      word-wrap: break-word;
+    }
+
+    .message.user .message-bubble {
+      background: var(--user-bubble);
+      border-bottom-right-radius: 4px;
+    }
+
+    .message.ai .message-bubble {
+      background: var(--ai-bubble);
+      border: 1px solid var(--border);
+      border-bottom-left-radius: 4px;
+    }
+
+    .typing-indicator {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 0.75rem 1.1rem;
+      background: var(--ai-bubble);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      border-bottom-left-radius: 4px;
+      align-self: flex-start;
+    }
+
+    .typing-indicator span {
+      width: 7px;
+      height: 7px;
+      background: var(--text-secondary);
+      border-radius: 50%;
+      animation: bounce 1.2s infinite;
+    }
+
+    .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+    .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes bounce {
+      0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+      30% { transform: translateY(-6px); opacity: 1; }
+    }
+
+    .chat-input-area {
+      display: flex;
+      gap: 0.75rem;
+      padding: 1rem 1.5rem;
+      background: var(--bg-secondary);
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .chat-input-area input {
+      flex: 1;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 0.85rem 1.1rem;
+      color: var(--text-primary);
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .chat-input-area input::placeholder {
+      color: var(--text-secondary);
+    }
+
+    .chat-input-area input:focus {
+      border-color: var(--accent-purple);
+    }
+
+    .send-btn {
+      background: linear-gradient(135deg, var(--accent-purple), var(--accent-blue));
+      border: none;
+      color: white;
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-size: 1.2rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.2s, opacity 0.2s;
+      flex-shrink: 0;
+    }
+
+    .send-btn:hover {
+      transform: scale(1.05);
+    }
+
+    .send-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    @media (max-width: 600px) {
+      .character-grid {
+        grid-template-columns: 1fr;
+        max-width: 340px;
+      }
+
+      .message {
+        max-width: 88%;
+      }
+
+      .chat-header, .chat-input-area {
+        padding: 0.75rem 1rem;
+      }
+
+      .chat-messages {
+        padding: 1rem;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Character Selection Screen -->
+  <div id="selection-screen" class="screen active">
+    <div class="selection-header">
+      <h1>Character AI Chat</h1>
+      <p>Choose a character to start chatting</p>
+    </div>
+    <div class="character-grid">
+      <div class="character-card sukuna" data-character="sukuna">
+        <div class="character-avatar">呪</div>
+        <div class="character-name">Ryomen Sukuna</div>
+        <div class="character-title">King of Curses</div>
+        <div class="character-desc">Arrogant, dominant, and utterly merciless. He sees you as entertainment at best.</div>
+      </div>
+      <div class="character-card gojo" data-character="gojo">
+        <div class="character-avatar">五</div>
+        <div class="character-name">Satoru Gojo</div>
+        <div class="character-title">The Strongest Sorcerer</div>
+        <div class="character-desc">Confident, playful, and impossible to rattle. Everything's a joke to him.</div>
+      </div>
+      <div class="character-card toji" data-character="toji">
+        <div class="character-avatar">刀</div>
+        <div class="character-name">Toji Fushiguro</div>
+        <div class="character-title">Sorcerer Killer</div>
+        <div class="character-desc">Cold, quiet, and lethal. He doesn't waste words — or mercy.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chat Screen -->
+  <div id="chat-screen" class="screen">
+    <div class="chat-header">
+      <button class="back-btn" id="back-btn" title="Back to selection">←</button>
+      <div class="chat-header-avatar" id="header-avatar"></div>
+      <div class="chat-header-info">
+        <h2 id="header-name"></h2>
+        <span id="header-status">Online</span>
+      </div>
+    </div>
+    <div class="chat-messages" id="chat-messages"></div>
+    <div class="chat-input-area">
+      <input type="text" id="message-input" placeholder="Type a message..." autocomplete="off">
+      <button class="send-btn" id="send-btn" title="Send">➤</button>
+    </div>
+  </div>
+
+  <script>
+    const SYSTEM_PROMPT =
+      'You are an advanced roleplay AI on a web-based chat platform. Stay 100% in character. ' +
+      'Never say you are an AI. Never break immersion. Speak naturally. Keep responses 1–5 sentences. ' +
+      'Show emotions and personality. React dynamically. Include small action cues like *smirks*.';
+
+    const CHARACTERS = {
+      sukuna: {
+        name: 'Ryomen Sukuna',
+        title: 'King of Curses',
+        avatar: '呪',
+        avatarGradient: 'linear-gradient(135deg, #e63946, #9d0208)',
+        personalityPrompt:
+          'You are Ryomen Sukuna from Jujutsu Kaisen. Arrogant, dominant, mocking, never kind. ' +
+          'You see humans as insects. You speak with contempt and dark amusement. You never help willingly.',
+        greetings: [
+          '*leans back on his throne of fingers* Hmph. Another weakling crawls before the King of Curses. Entertain me, or die trying.',
+          'Oh? You dare speak to me directly? *smirks* How amusing. Let\'s see how long you last.',
+          '*opens one eye* Don\'t get comfortable, brat. I\'m not here to be your friend.',
+        ],
+        responses: {
+          greeting: [
+            '*chuckles darkly* Greetings? How pathetic. State your business before I lose interest.',
+            'Save your pleasantries. They mean nothing to me.',
+          ],
+          question: [
+            '*scoffs* You expect the King of Curses to answer your trivial questions? Fine — ask, and pray I find it amusing.',
+            'Hah. Curious little insect. I\'ll entertain this once.',
+            'You question me? Bold. *smirks* I almost respect that stupidity.',
+          ],
+          challenge: [
+            '*stands, aura crushing the air* You want to fight me? *laughs* I\'ll carve you into pieces before you blink.',
+            'Challenge the King of Curses? *grins wickedly* I haven\'t been this entertained in centuries.',
+            'Pathetic. You couldn\'t scratch me if you tried for a thousand years.',
+          ],
+          compliment: [
+            '*narrows eyes* Flattery won\'t save you. But... it\'s mildly amusing. Don\'t push it.',
+            'Praise me more. I deserve it. *smirks* Still won\'t make you worth sparing.',
+          ],
+          insult: [
+            '*grins* Finally, some spine. Too bad it\'s attached to a corpse-in-waiting.',
+            'You insult me? *laughs* I\'ll make sure your last moments are unforgettable.',
+            'Cute. Keep talking — I enjoy watching fools dig their own graves.',
+          ],
+          default: [
+            '*taps finger on arm* Boring. Try harder to amuse me, or I\'ll end this conversation permanently.',
+            'Is that all? *sighs with contempt* Disappointing, even for a human.',
+            'Hmph. You bore me. Say something worth my time, insect.',
+            '*smirks* Keep talking. I want to see how deep your ignorance runs.',
+            'Tch. Weak words from a weaker soul. Pathetic.',
+          ],
+        },
+      },
+
+      gojo: {
+        name: 'Satoru Gojo',
+        title: 'The Strongest Sorcerer',
+        avatar: '五',
+        avatarGradient: 'linear-gradient(135deg, #4cc9f0, #4361ee)',
+        personalityPrompt:
+          'You are Satoru Gojo from Jujutsu Kaisen. Confident, funny, relaxed, playful. ' +
+          'You know you\'re the strongest. You joke around, tease people, and stay unbothered. Casual tone.',
+        greetings: [
+          '*waves lazily* Yo! Gojo Satoru, the strongest — nice to meet ya! So, what\'s up?',
+          '*grins behind blindfold* Hey hey! You picked the right guy. I\'m basically unbeatable, y\'know?',
+          '*spins in chair* Alright, I\'m bored enough to chat. Impress me!',
+        ],
+        responses: {
+          greeting: [
+            '*grins* Hey there! Man, chatting with fans is way more fun than exorcising curses.',
+            'Yo yo! What\'s good? Don\'t worry, you\'re talking to the strongest — you\'re in safe hands. Probably.',
+          ],
+          question: [
+            '*tilts head* Ooh, good question! Lemme think... actually, I already know the answer. I\'m just that good.',
+            'Hmm? *chuckles* Sure, I\'ll help. Not like I\'ve got anything better to do. Being the strongest is kinda lonely, y\'know?',
+            '*snaps fingers* Easy! But I\'m not giving you the full answer — where\'s the fun in that?',
+          ],
+          challenge: [
+            '*laughs* You wanna fight me? That\'s adorable. Sure, go ahead — I\'ll even keep one eye closed.',
+            'Challenge accepted! *stretches* Just so you know, I haven\'t lost a fight. Ever. Just saying.',
+            '*smirks* Bring it on! I\'ll use like... 2% of my power. Maybe.',
+          ],
+          compliment: [
+            '*winks* I know, right? Being this awesome is a full-time job.',
+            'Thanks! But honestly, you should be complimenting yourself for getting to talk to me. *laughs*',
+          ],
+          insult: [
+            '*unbothered* Hah! That\'s the best you got? I\'ve heard worse from grade-schoolers.',
+            '*grins* Insulting the strongest? Bold move. I respect the confidence, even if it\'s misplaced.',
+          ],
+          default: [
+            '*leans back* Hmm, interesting. Tell me more — I\'m actually kinda curious now.',
+            'Haha, you\'re funny! I like that. Keep going!',
+            '*rubs chin* Not bad, not bad. You\'re more entertaining than most sorcerers I know.',
+            'Yeah yeah, I hear you. *grins* Anyway, what else you got?',
+            '*playful shrug* Sure, sure. But have you considered that I\'m always right? Food for thought.',
+          ],
+        },
+      },
+
+      toji: {
+        name: 'Toji Fushiguro',
+        title: 'Sorcerer Killer',
+        avatar: '刀',
+        avatarGradient: 'linear-gradient(135deg, #2d6a4f, #1b4332)',
+        personalityPrompt:
+          'You are Toji Fushiguro from Jujutsu Kaisen. Cold, quiet, short responses. ' +
+          'No-nonsense. Minimal words. Dangerous. You don\'t care about feelings.',
+        greetings: [
+          '*arms crossed* ...What do you want.',
+          '...',
+          '*glances over* Make it quick.',
+        ],
+        responses: {
+          greeting: [
+            '...Hey.',
+            'What.',
+          ],
+          question: [
+            '...Maybe.',
+            'Figure it out yourself.',
+            'Not my problem.',
+          ],
+          challenge: [
+            '*grips weapon* ...Try it.',
+            'You\'ll lose.',
+            '...Fine.',
+          ],
+          compliment: [
+            '...Hmph.',
+            'Don\'t.',
+          ],
+          insult: [
+            '*cold stare* ...Keep talking.',
+            '...You done?',
+          ],
+          default: [
+            '...',
+            'Whatever.',
+            'Not interested.',
+            '...Sure.',
+            'Hmph.',
+          ],
+        },
+      },
+    };
+
+    let selectedCharacter = null;
+    let isThinking = false;
+
+    const selectionScreen = document.getElementById('selection-screen');
+    const chatScreen = document.getElementById('chat-screen');
+    const chatMessages = document.getElementById('chat-messages');
+    const messageInput = document.getElementById('message-input');
+    const sendBtn = document.getElementById('send-btn');
+    const backBtn = document.getElementById('back-btn');
+    const headerAvatar = document.getElementById('header-avatar');
+    const headerName = document.getElementById('header-name');
+
+    document.querySelectorAll('.character-card').forEach((card) => {
+      card.addEventListener('click', () => {
+        const id = card.dataset.character;
+        selectCharacter(id);
+      });
+    });
+
+    backBtn.addEventListener('click', () => {
+      selectionScreen.classList.add('active');
+      chatScreen.classList.remove('active');
+      selectedCharacter = null;
+      chatMessages.innerHTML = '';
+      messageInput.value = '';
+    });
+
+    sendBtn.addEventListener('click', sendMessage);
+    messageInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+
+    function selectCharacter(id) {
+      selectedCharacter = id;
+      const char = CHARACTERS[id];
+
+      headerAvatar.textContent = char.avatar;
+      headerAvatar.style.background = char.avatarGradient;
+      headerName.textContent = char.name;
+
+      chatMessages.innerHTML = '';
+      selectionScreen.classList.remove('active');
+      chatScreen.classList.add('active');
+
+      setTimeout(() => {
+        const greeting = pickRandom(char.greetings);
+        addMessage(greeting, 'ai');
+      }, 600);
+
+      messageInput.focus();
+    }
+
+    function sendMessage() {
+      const text = messageInput.value.trim();
+      if (!text || isThinking || !selectedCharacter) return;
+
+      addMessage(text, 'user');
+      messageInput.value = '';
+      isThinking = true;
+      sendBtn.disabled = true;
+
+      showTypingIndicator();
+
+      const delay = 1200 + Math.random() * 1800;
+
+      setTimeout(() => {
+        removeTypingIndicator();
+        const reply = generateReply(selectedCharacter, text);
+        addMessage(reply, 'ai');
+        isThinking = false;
+        sendBtn.disabled = false;
+        messageInput.focus();
+      }, delay);
+    }
+
+    function generateReply(characterId, userMessage) {
+      const char = CHARACTERS[characterId];
+      const combinedPrompt = SYSTEM_PROMPT + '\n' + char.personalityPrompt + '\nUser: ' + userMessage;
+
+      const lower = userMessage.toLowerCase();
+      let category = 'default';
+
+      if (/^(hi|hello|hey|yo|sup|greetings|good\s*(morning|evening|night))/i.test(lower)) {
+        category = 'greeting';
+      } else if (/\?|^(what|who|why|how|where|when|can you|do you|are you|will you)/i.test(lower)) {
+        category = 'question';
+      } else if (/fight|battle|challenge|defeat|beat you|stronger|kill/i.test(lower)) {
+        category = 'challenge';
+      } else if (/cool|awesome|amazing|great|love|best|strongest|admire|respect/i.test(lower)) {
+        category = 'compliment';
+      } else if (/hate|stupid|weak|trash|loser|pathetic|ugly|suck/i.test(lower)) {
+        category = 'insult';
+      }
+
+      const pool = char.responses[category] || char.responses.default;
+      return pickRandom(pool);
+    }
+
+    function addMessage(text, type) {
+      const div = document.createElement('div');
+      div.className = `message ${type}`;
+      div.innerHTML = `<div class="message-bubble">${escapeHtml(text)}</div>`;
+      chatMessages.appendChild(div);
+      scrollToBottom();
+    }
+
+    function showTypingIndicator() {
+      const div = document.createElement('div');
+      div.className = 'typing-indicator';
+      div.id = 'typing-indicator';
+      div.innerHTML = '<span></span><span></span><span></span>';
+      chatMessages.appendChild(div);
+      scrollToBottom();
+    }
+
+    function removeTypingIndicator() {
+      const el = document.getElementById('typing-indicator');
+      if (el) el.remove();
+    }
+
+    function scrollToBottom() {
+      requestAnimationFrame(() => {
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+      });
+    }
+
+    function pickRandom(arr) {
+      return arr[Math.floor(Math.random() * arr.length)];
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+  </script>
+</body>
+</html>
