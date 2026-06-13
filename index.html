@@ -439,15 +439,12 @@
     <button class="lang-btn active" data-lang="en">English</button>
     <button class="lang-btn" data-lang="tr">Türkçe</button>
     <span class="detected-lang" id="detected-lang"></span>
-    <span class="mode-badge" id="mode-badge">Demo</span>
-    <button class="settings-btn" id="settings-btn">⚙ API Key</button>
   </div>
 
   <div id="selection-screen" class="screen active">
     <div class="selection-header">
       <h1 id="app-title">Character AI Chat</h1>
       <p id="app-subtitle">Select Your Character</p>
-      <p class="api-notice" id="api-notice">Click to set your OpenAI API key</p>
     </div>
     <div class="character-grid">
       <div class="character-card sukuna" data-character="sukuna">
@@ -487,39 +484,12 @@
     </div>
   </div>
 
-  <div class="modal-overlay" id="api-modal">
-    <div class="modal">
-      <h3 id="modal-title">OpenAI API Key</h3>
-      <p id="modal-desc">Enter your OpenAI API key. It is stored locally in your browser and never sent anywhere except OpenAI.</p>
-      <p class="modal-error" id="modal-error"></p>
-      <input type="password" id="api-key-input" placeholder="sk-..." autocomplete="off">
-      <div class="modal-actions">
-        <button class="modal-cancel" id="modal-cancel">Cancel</button>
-        <button class="modal-save" id="modal-save">Save</button>
-      </div>
-    </div>
-  </div>
-
   <script>
     let defaultLanguage = 'en';
     let conversationLanguage = 'en';
     let selectedCharacter = null;
     let isThinking = false;
     let chatHistory = [];
-    let useDemoMode = true;
-    let apiKey = '';
-
-    function loadApiKey() {
-      const stored = localStorage.getItem('openai_api_key') || '';
-      return isValidApiKey(stored) ? stored : '';
-    }
-
-    function isValidApiKey(key) {
-      return typeof key === 'string' && /^sk-[A-Za-z0-9_-]{20,}$/.test(key.trim());
-    }
-
-    apiKey = loadApiKey();
-    useDemoMode = !apiKey;
 
     const UI = {
       en: {
@@ -530,13 +500,6 @@
         send: 'Send',
         online: 'Online',
         typing: 'typing...',
-        apiNotice: 'Add OpenAI API key for natural ChatGPT-like chat',
-        demoHint: 'ChatGPT gibi her soruya cevap için ⚙ API Key ekle. Demo modu hazır cevap kullanır.',
-        needApiKey: 'OpenAI API key required for ChatGPT-like smart answers. Click ⚙ API Key.',
-        modalDesc: 'Enter your OpenAI API key (starts with sk-). Without a key, demo mode works automatically. Key is stored only in your browser.',
-        modalCancel: 'Cancel',
-        modalSave: 'Save',
-        settings: '⚙ API Key',
         detected: 'Detected:',
         'sukuna-title': 'King of Curses',
         'sukuna-desc': 'Arrogant, dominant, and utterly merciless.',
@@ -544,14 +507,6 @@
         'gojo-desc': 'Confident, playful, and impossible to rattle.',
         'toji-title': 'Sorcerer Killer',
         'toji-desc': 'Cold, quiet, and lethal.',
-        noApiKey: 'Please set your OpenAI API key first (⚙ API Key).',
-        apiError: 'API error. Check your key and try again.',
-        invalidKey: 'Invalid API key. It must start with "sk-" and come from platform.openai.com',
-        invalidKeySaved: 'The saved API key is invalid. Running in demo mode.',
-        fixKey: 'Fix API key',
-        demoMode: 'Demo',
-        aiMode: 'AI',
-        keySaved: 'API key saved. AI mode enabled.',
         langNames: { en: 'English', tr: 'Turkish' },
       },
       tr: {
@@ -562,14 +517,6 @@
         send: 'Gönder',
         online: 'Çevrimiçi',
         typing: 'yazıyor...',
-        apiNotice: 'Doğal ChatGPT gibi sohbet için OpenAI API anahtarı ekle',
-        demoHint: 'ChatGPT gibi her soruya cevap için ⚙ API Key ekle. Demo modu hazır cevap kullanır.',
-        needApiKey: 'ChatGPT gibi akıllı cevap için OpenAI API anahtarı gerekli. ⚙ API Key butonuna tıkla.',
-        modalTitle: 'OpenAI API Anahtarı',
-        modalDesc: 'OpenAI API anahtarını gir (sk- ile başlar). Anahtar olmadan demo modu otomatik çalışır. Anahtar yalnızca tarayıcında saklanır.',
-        modalCancel: 'İptal',
-        modalSave: 'Kaydet',
-        settings: '⚙ API Key',
         detected: 'Algılandı:',
         'sukuna-title': 'Lanetlerin Kralı',
         'sukuna-desc': 'Kibirli, baskın ve acımasız.',
@@ -577,19 +524,10 @@
         'gojo-desc': 'Kendinden emin, şakacı ve asla telaşlanmaz.',
         'toji-title': 'Büyücü Katili',
         'toji-desc': 'Soğuk, sessiz ve ölümcül.',
-        noApiKey: 'Önce OpenAI API anahtarını ayarla (⚙ API Key).',
-        apiError: 'API hatası. Anahtarını kontrol et ve tekrar dene.',
-        invalidKey: 'Geçersiz API anahtarı. "sk-" ile başlamalı ve platform.openai.com adresinden alınmalı.',
-        invalidKeySaved: 'Kayıtlı API anahtarı geçersiz. Demo modunda çalışıyor.',
-        fixKey: 'API anahtarını düzelt',
-        demoMode: 'Demo',
-        aiMode: 'AI',
-        keySaved: 'API anahtarı kaydedildi. AI modu aktif.',
         langNames: { en: 'İngilizce', tr: 'Türkçe' },
       },
     };
 
-    const AI_MODEL = 'gpt-4o';
     const LANGUAGE_RULE = 'Respond ONLY in the same language as the user\'s message. Never mix languages.';
 
     const MOCK = {
@@ -688,7 +626,6 @@ Format: *brief action* then very short dialogue. 1-2 sentences max.`,
     };
 
     let lastMockIndex = {};
-    let demoHintShown = false;
 
     const selectionScreen = document.getElementById('selection-screen');
     const chatScreen = document.getElementById('chat-screen');
@@ -700,10 +637,6 @@ Format: *brief action* then very short dialogue. 1-2 sentences max.`,
     const headerName = document.getElementById('header-name');
     const headerStatus = document.getElementById('header-status');
     const detectedLangEl = document.getElementById('detected-lang');
-    const apiModal = document.getElementById('api-modal');
-    const apiKeyInput = document.getElementById('api-key-input');
-    const modalError = document.getElementById('modal-error');
-    const modeBadge = document.getElementById('mode-badge');
 
     document.querySelectorAll('.lang-btn').forEach((btn) => {
       btn.addEventListener('click', () => {
@@ -735,81 +668,6 @@ Format: *brief action* then very short dialogue. 1-2 sentences max.`,
     messageInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
     });
-
-    document.getElementById('settings-btn').addEventListener('click', openApiModal);
-    document.getElementById('api-notice').addEventListener('click', openApiModal);
-    document.getElementById('modal-cancel').addEventListener('click', closeApiModal);
-    document.getElementById('modal-save').addEventListener('click', saveApiKey);
-    apiModal.addEventListener('click', (e) => { if (e.target === apiModal) closeApiModal(); });
-
-    function openApiModal() {
-      apiKeyInput.value = apiKey;
-      modalError.textContent = '';
-      apiModal.classList.add('active');
-      apiKeyInput.focus();
-    }
-
-    function closeApiModal() {
-      apiModal.classList.remove('active');
-      modalError.textContent = '';
-    }
-
-    function saveApiKey() {
-      const key = apiKeyInput.value.trim();
-      if (key && !isValidApiKey(key)) {
-        modalError.textContent = UI[defaultLanguage].invalidKey;
-        return;
-      }
-
-      apiKey = key;
-      if (apiKey) {
-        localStorage.setItem('openai_api_key', apiKey);
-        useDemoMode = false;
-      } else {
-        localStorage.removeItem('openai_api_key');
-        useDemoMode = true;
-      }
-
-      updateModeBadge();
-      closeApiModal();
-    }
-
-    function clearInvalidApiKey() {
-      apiKey = '';
-      useDemoMode = true;
-      localStorage.removeItem('openai_api_key');
-      updateModeBadge();
-    }
-
-    function formatApiError(rawMessage) {
-      const t = UI[defaultLanguage];
-      const msg = (rawMessage || '').toLowerCase();
-
-      if (msg.includes('incorrect api key') || msg.includes('invalid api key') || msg.includes('invalid_api_key')) {
-        clearInvalidApiKey();
-        return t.invalidKey;
-      }
-      if (msg.includes('insufficient_quota') || msg.includes('quota')) {
-        return defaultLanguage === 'tr'
-          ? 'API kotası doldu. OpenAI hesabını kontrol et veya demo modunu kullan.'
-          : 'API quota exceeded. Check your OpenAI account or use demo mode.';
-      }
-      if (msg.includes('rate limit')) {
-        return defaultLanguage === 'tr'
-          ? 'Çok fazla istek. Biraz bekle ve tekrar dene.'
-          : 'Rate limit reached. Wait a moment and try again.';
-      }
-      return t.apiError;
-    }
-
-    function updateModeBadge() {
-      const t = UI[defaultLanguage];
-      modeBadge.textContent = useDemoMode ? t.demoMode : t.aiMode;
-      modeBadge.style.background = useDemoMode
-        ? 'rgba(157, 78, 221, 0.15)'
-        : 'rgba(76, 201, 240, 0.15)';
-      modeBadge.style.color = useDemoMode ? 'var(--accent-purple)' : 'var(--accent-blue)';
-    }
 
     function classifyMessage(text) {
       const lower = text.toLowerCase().trim();
@@ -987,31 +845,11 @@ Format: *brief action* then very short dialogue. 1-2 sentences max.`,
       return result;
     }
 
-    function addErrorMessage(message) {
-      const t = UI[defaultLanguage];
-      const div = document.createElement('div');
-      div.className = 'message error';
-      div.innerHTML = `
-        <div class="message-bubble">
-          ${escapeHtml(message)}
-          <div class="error-action" data-action="fix-key">${escapeHtml(t.fixKey)}</div>
-        </div>`;
-      div.querySelector('[data-action="fix-key"]').addEventListener('click', openApiModal);
-      chatMessages.appendChild(div);
-      scrollToBottom();
-    }
-
     function updateUI() {
       const t = UI[defaultLanguage];
       document.getElementById('lang-label').textContent = t.langLabel;
       document.getElementById('app-title').textContent = t.appTitle;
       document.getElementById('app-subtitle').textContent = t.appSubtitle;
-      document.getElementById('api-notice').textContent = t.apiNotice;
-      document.getElementById('modal-title').textContent = t.modalTitle;
-      document.getElementById('modal-desc').textContent = t.modalDesc;
-      document.getElementById('modal-cancel').textContent = t.modalCancel;
-      document.getElementById('modal-save').textContent = t.modalSave;
-      document.getElementById('settings-btn').textContent = t.settings;
       messageInput.placeholder = t.inputPlaceholder;
       sendBtn.textContent = t.send;
       headerStatus.textContent = t.online;
@@ -1019,7 +857,6 @@ Format: *brief action* then very short dialogue. 1-2 sentences max.`,
         if (t[el.dataset.i18n]) el.textContent = t[el.dataset.i18n];
       });
       document.documentElement.lang = defaultLanguage;
-      updateModeBadge();
     }
 
     function updateDetectedBadge() {
@@ -1044,38 +881,39 @@ Format: *brief action* then very short dialogue. 1-2 sentences max.`,
       return defaultLanguage;
     }
 
-    async function detectLanguageWithAI(text) {
-      if (useDemoMode || !isValidApiKey(apiKey)) return detectLanguage(text);
+    function buildContextualAnswer(characterId, lang, text) {
+      const lower = text.toLowerCase().trim();
 
-      try {
-        const response = await fetch('https://api.openai.com/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`,
-          },
-          body: JSON.stringify({
-            model: 'gpt-4o-mini',
-            temperature: 0,
-            max_tokens: 10,
-            messages: [
-              {
-                role: 'system',
-                content: 'Detect the language of the user message. Reply with ONLY "en" for English or "tr" for Turkish. Nothing else.',
-              },
-              { role: 'user', content: text },
-            ],
-          }),
-        });
-
-        if (!response.ok) return detectLanguage(text);
-
-        const data = await response.json();
-        const result = data.choices?.[0]?.message?.content?.trim().toLowerCase();
-        return result === 'tr' ? 'tr' : result === 'en' ? 'en' : detectLanguage(text);
-      } catch {
-        return detectLanguage(text);
+      const math = lower.match(/(\d+)\s*([+\-*/x×÷])\s*(\d+)/);
+      if (math) {
+        const a = +math[1];
+        const b = +math[3];
+        const op = math[2];
+        let n;
+        if (op === '+') n = a + b;
+        else if (op === '-') n = a - b;
+        else if (op === '*' || op === 'x' || op === '×') n = a * b;
+        else if (op === '/' || op === '÷') n = b ? Math.round((a / b) * 100) / 100 : '?';
+        else n = '?';
+        const tpl = {
+          gojo: { tr: `*sırıtır* Kolay. ${a} ${op} ${b} = ${n}.`, en: `*grins* Easy. ${a} ${op} ${b} = ${n}.` },
+          sukuna: { tr: `*küçümser* ${a} ${op} ${b} = ${n}. Çocuk işi.`, en: `*scoffs* ${a} ${op} ${b} = ${n}. Child's play.` },
+          toji: { tr: `*duraksar* ...${n}.`, en: `*pauses* ...${n}.` },
+        };
+        return tpl[characterId][lang];
       }
+
+      const topic = getMessageTopic(text);
+      const smart = SMART_REPLIES[characterId]?.[lang]?.[topic];
+      if (smart) {
+        const key = `${characterId}-${lang}-ctx-${topic}`;
+        let idx;
+        do { idx = Math.floor(Math.random() * smart.length); } while (smart.length > 1 && idx === lastMockIndex[key]);
+        lastMockIndex[key] = idx;
+        return smart[idx];
+      }
+
+      return null;
     }
 
     function getActiveLanguage() {
@@ -1085,51 +923,11 @@ Format: *brief action* then very short dialogue. 1-2 sentences max.`,
       return conversationLanguage || defaultLanguage;
     }
 
-    function buildSystemPrompt(characterId, lang, isRetry) {
-      const char = CHARACTERS[characterId];
-      const langName = lang === 'tr' ? 'Turkish' : 'English';
-
-      return `You are ${char.name} from Jujutsu Kaisen, chatting live with a user.
-
-${char.personality}
-
-${LANGUAGE_RULE}
-Write 100% in ${langName}. Action cues in *asterisks* must also be in ${langName}.
-
-=== CHATGPT-LEVEL INTELLIGENCE (CRITICAL) ===
-You are as smart and helpful as ChatGPT, but you speak AS ${char.name}.
-- Understand ANY message naturally: questions, slang, typos, follow-ups, jokes, insults, random topics.
-- Answer EVERY question correctly and specifically — math, facts, advice, anime, life, anything.
-- NEVER dodge a question. NEVER give a generic template. NEVER ignore what the user said.
-- If they ask something factual → give the RIGHT answer, in your character voice.
-- If they say "peki sen" / "what about you" → answer about yourself, using conversation context.
-- If they insult you → react to THAT insult. Do NOT greet again.
-- Remember the full chat history. Continue topics naturally.
-
-=== FORMAT ===
-*one short action* then dialogue. ${characterId === 'toji' ? '1-2 short sentences.' : '2-4 sentences if needed for a good answer.'}
-Never say you are an AI. Stay in character.
-${isRetry ? '\nYour last reply was bad. Fix it: answer the latest user message directly, correct language, in character.' : ''}`;
-    }
-
-    function showDemoHintOnce() {
-      if (!useDemoMode || demoHintShown) return;
-      demoHintShown = true;
-      addMessage(UI[defaultLanguage].demoHint, 'error');
-    }
-
     async function selectCharacter(id) {
-      if (!isValidApiKey(apiKey)) {
-        useDemoMode = true;
-        if (localStorage.getItem('openai_api_key')) clearInvalidApiKey();
-        openApiModal();
-      }
-
       selectedCharacter = id;
       conversationLanguage = defaultLanguage;
       chatHistory = [];
       lastMockIndex = {};
-      demoHintShown = false;
       const char = CHARACTERS[id];
 
       headerAvatar.textContent = char.avatar;
@@ -1142,7 +940,6 @@ ${isRetry ? '\nYour last reply was bad. Fix it: answer the latest user message d
       updateDetectedBadge();
       messageInput.focus();
 
-      if (useDemoMode) showDemoHintOnce();
       await sendGreeting();
     }
 
@@ -1156,26 +953,10 @@ ${isRetry ? '\nYour last reply was bad. Fix it: answer the latest user message d
 
       await delay(600);
 
-      try {
-        let reply;
-        if (isValidApiKey(apiKey)) {
-          useDemoMode = false;
-          reply = await callOpenAI(null, true);
-          reply = polishResponse(reply, conversationLanguage, selectedCharacter, true);
-        } else {
-          reply = generateMockReply(selectedCharacter, true);
-          reply = polishResponse(reply, conversationLanguage, selectedCharacter, true);
-        }
-        removeTypingIndicator();
-        addMessage(reply, 'ai');
-        chatHistory.push({ role: 'assistant', content: reply });
-      } catch (err) {
-        removeTypingIndicator();
-        const fallback = generateMockReply(selectedCharacter, true);
-        addMessage(fallback, 'ai');
-        chatHistory.push({ role: 'assistant', content: fallback });
-        if (isValidApiKey(apiKey)) addErrorMessage(formatApiError(err.message));
-      }
+      const reply = polishResponse(generateMockReply(selectedCharacter, true), conversationLanguage, selectedCharacter, true);
+      removeTypingIndicator();
+      addMessage(reply, 'ai');
+      chatHistory.push({ role: 'assistant', content: reply });
 
       isThinking = false;
       sendBtn.disabled = false;
@@ -1185,13 +966,6 @@ ${isRetry ? '\nYour last reply was bad. Fix it: answer the latest user message d
     async function sendMessage() {
       const text = messageInput.value.trim();
       if (!text || isThinking || !selectedCharacter) return;
-
-      if (!isValidApiKey(apiKey)) {
-        useDemoMode = true;
-        openApiModal();
-        addMessage(UI[defaultLanguage].needApiKey, 'error');
-        return;
-      }
 
       addMessage(text, 'user');
       messageInput.value = '';
@@ -1204,82 +978,24 @@ ${isRetry ? '\nYour last reply was bad. Fix it: answer the latest user message d
       conversationLanguage = detectLanguage(text);
       updateDetectedBadge();
 
-      await delay(300 + Math.random() * 400);
+      await delay(400 + Math.random() * 500);
 
-      try {
-        useDemoMode = false;
-        let reply = await callOpenAI(null, false);
-        reply = polishResponse(reply, getActiveLanguage(), selectedCharacter, true);
-        removeTypingIndicator();
-        addMessage(reply, 'ai');
-        chatHistory.push({ role: 'assistant', content: reply });
-      } catch (err) {
-        removeTypingIndicator();
-        useDemoMode = true;
-        addErrorMessage(formatApiError(err.message));
-      }
+      const lang = getActiveLanguage();
+      const contextual = buildContextualAnswer(selectedCharacter, lang, text);
+      const reply = polishResponse(
+        contextual || generateMockReply(selectedCharacter, false, text),
+        lang,
+        selectedCharacter,
+        true
+      );
+
+      removeTypingIndicator();
+      addMessage(reply, 'ai');
+      chatHistory.push({ role: 'assistant', content: reply });
 
       isThinking = false;
       sendBtn.disabled = false;
       messageInput.focus();
-    }
-
-    async function callOpenAI(_unused, isGreeting, isRetry) {
-      if (!isValidApiKey(apiKey)) {
-        useDemoMode = true;
-        throw new Error('invalid_api_key');
-      }
-
-      const lang = isGreeting ? conversationLanguage : getActiveLanguage();
-      conversationLanguage = lang;
-      updateDetectedBadge();
-
-      const messages = [{ role: 'system', content: buildSystemPrompt(selectedCharacter, lang, isRetry) }];
-
-      if (isGreeting) {
-        messages.push({
-          role: 'user',
-          content: lang === 'tr'
-            ? 'Kullanıcı sohbete başladı. Kısa, doğal bir karşılama yap.'
-            : 'The user opened the chat. Give a short natural greeting.',
-        });
-      } else {
-        for (const msg of chatHistory.slice(-30)) {
-          messages.push({ role: msg.role, content: msg.content });
-        }
-      }
-
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model: AI_MODEL,
-          temperature: isRetry ? 0.5 : 0.88,
-          max_tokens: 500,
-          presence_penalty: 0.2,
-          frequency_penalty: 0.3,
-          messages,
-        }),
-      });
-
-      if (!response.ok) {
-        const err = await response.json().catch(() => ({}));
-        const code = err.error?.code || '';
-        const message = err.error?.message || UI[defaultLanguage].apiError;
-        throw new Error(code ? `${code}: ${message}` : message);
-      }
-
-      const data = await response.json();
-      let reply = data.choices?.[0]?.message?.content?.trim() || '...';
-
-      if (!isRetry && hasMixedLanguage(reply, lang)) {
-        return callOpenAI(null, isGreeting, true);
-      }
-
-      return reply;
     }
 
     function addMessage(text, type) {
