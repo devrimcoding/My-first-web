@@ -1,0 +1,1047 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Anime & Game Character AI Chat</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-primary: #0a0a0f;
+      --bg-secondary: #12121a;
+      --bg-card: #1a1a28;
+      --bg-card-hover: #222236;
+      --accent-red: #e63946;
+      --accent-blue: #4cc9f0;
+      --accent-purple: #9d4edd;
+      --text-primary: #f0f0f5;
+      --text-secondary: #a0a0b8;
+      --border: #2a2a3e;
+      --user-bubble: #3a3a5c;
+      --ai-bubble: #1e1e32;
+      --shadow: rgba(0, 0, 0, 0.5);
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse at 20% 20%, rgba(157, 78, 221, 0.08) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 80%, rgba(76, 201, 240, 0.06) 0%, transparent 50%),
+        radial-gradient(ellipse at 50% 50%, rgba(230, 57, 70, 0.04) 0%, transparent 60%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .top-bar {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 0.5rem 1rem;
+      padding: 0.75rem 1rem;
+      background: rgba(18, 18, 26, 0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .top-bar label { font-size: 0.85rem; color: var(--text-secondary); }
+
+    .lang-btn, .settings-btn {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      padding: 0.4rem 1rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 600;
+      transition: all 0.2s ease;
+    }
+
+    .lang-btn:hover, .settings-btn:hover {
+      border-color: var(--accent-purple);
+      color: var(--text-primary);
+    }
+
+    .lang-btn.active {
+      background: linear-gradient(135deg, var(--accent-purple), var(--accent-blue));
+      border-color: transparent;
+      color: white;
+    }
+
+    .detected-lang {
+      font-size: 0.75rem;
+      color: var(--accent-blue);
+      padding: 0.25rem 0.6rem;
+      background: rgba(76, 201, 240, 0.1);
+      border-radius: 6px;
+      display: none;
+    }
+
+    .detected-lang.visible { display: inline-block; }
+
+    .screen {
+      display: none;
+      position: relative;
+      z-index: 1;
+      min-height: 100vh;
+      padding-top: 56px;
+    }
+
+    .screen.active { display: flex; flex-direction: column; }
+
+    #selection-screen {
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1.5rem;
+    }
+
+    .selection-header { text-align: center; margin-bottom: 3rem; }
+
+    .selection-header h1 {
+      font-size: clamp(1.8rem, 5vw, 2.8rem);
+      font-weight: 800;
+      background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple), var(--accent-red));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 0.5rem;
+    }
+
+    .selection-header p { color: var(--text-secondary); font-size: 1rem; }
+
+    .api-notice {
+      margin-top: 1rem;
+      font-size: 0.8rem;
+      color: var(--accent-purple);
+      cursor: pointer;
+    }
+
+    .api-notice:hover { text-decoration: underline; }
+
+    .character-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1.5rem;
+      max-width: 960px;
+      width: 100%;
+    }
+
+    .character-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 2rem 1.5rem;
+      cursor: pointer;
+      transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease, background 0.3s ease;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .character-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      border-radius: 16px;
+    }
+
+    .character-card.sukuna::before { background: linear-gradient(135deg, rgba(230, 57, 70, 0.15), transparent); }
+    .character-card.gojo::before { background: linear-gradient(135deg, rgba(76, 201, 240, 0.15), transparent); }
+    .character-card.toji::before { background: linear-gradient(135deg, rgba(45, 106, 79, 0.15), transparent); }
+
+    .character-card:hover {
+      transform: translateY(-6px);
+      background: var(--bg-card-hover);
+      box-shadow: 0 12px 40px var(--shadow);
+    }
+
+    .character-card.sukuna:hover { border-color: var(--accent-red); }
+    .character-card.gojo:hover { border-color: var(--accent-blue); }
+    .character-card.toji:hover { border-color: #52b788; }
+    .character-card:hover::before { opacity: 1; }
+
+    .character-avatar {
+      width: 80px; height: 80px;
+      border-radius: 50%;
+      margin: 0 auto 1.25rem;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2.2rem; font-weight: 900;
+      position: relative; z-index: 1;
+    }
+
+    .character-card.sukuna .character-avatar {
+      background: linear-gradient(135deg, #e63946, #9d0208);
+      box-shadow: 0 0 20px rgba(230, 57, 70, 0.4);
+    }
+
+    .character-card.gojo .character-avatar {
+      background: linear-gradient(135deg, #4cc9f0, #4361ee);
+      box-shadow: 0 0 20px rgba(76, 201, 240, 0.4);
+    }
+
+    .character-card.toji .character-avatar {
+      background: linear-gradient(135deg, #2d6a4f, #1b4332);
+      box-shadow: 0 0 20px rgba(45, 106, 79, 0.4);
+    }
+
+    .character-name { font-size: 1.4rem; font-weight: 700; margin-bottom: 0.4rem; position: relative; z-index: 1; }
+    .character-title { color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 0.75rem; position: relative; z-index: 1; }
+    .character-desc { color: var(--text-secondary); font-size: 0.9rem; line-height: 1.5; position: relative; z-index: 1; }
+
+    #chat-screen { height: 100vh; }
+
+    .chat-header {
+      display: flex; align-items: center; gap: 1rem;
+      padding: 1rem 1.5rem;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .back-btn {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      width: 40px; height: 40px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 1.1rem;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    .back-btn:hover { background: var(--bg-card); color: var(--text-primary); }
+
+    .chat-header-avatar {
+      width: 44px; height: 44px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.2rem; font-weight: 800;
+      flex-shrink: 0;
+    }
+
+    .chat-header-info h2 { font-size: 1.1rem; font-weight: 700; }
+    .chat-header-info span { font-size: 0.8rem; color: var(--text-secondary); }
+
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      scroll-behavior: smooth;
+    }
+
+    .chat-messages::-webkit-scrollbar { width: 6px; }
+    .chat-messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    .message {
+      display: flex;
+      max-width: 75%;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .message.user { align-self: flex-end; flex-direction: row-reverse; }
+    .message.ai { align-self: flex-start; }
+
+    .message-bubble {
+      padding: 0.75rem 1.1rem;
+      border-radius: 16px;
+      line-height: 1.5;
+      font-size: 0.95rem;
+      word-wrap: break-word;
+      white-space: pre-wrap;
+    }
+
+    .message.user .message-bubble { background: var(--user-bubble); border-bottom-right-radius: 4px; }
+    .message.ai .message-bubble { background: var(--ai-bubble); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
+    .message.error .message-bubble { background: rgba(230, 57, 70, 0.15); border-color: var(--accent-red); color: #ff8a93; }
+
+    .typing-indicator {
+      display: flex; align-items: center; gap: 6px;
+      padding: 0.75rem 1.1rem;
+      background: var(--ai-bubble);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      border-bottom-left-radius: 4px;
+      align-self: flex-start;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+    }
+
+    .typing-dots { display: flex; gap: 4px; }
+
+    .typing-dots span {
+      width: 6px; height: 6px;
+      background: var(--text-secondary);
+      border-radius: 50%;
+      animation: bounce 1.2s infinite;
+    }
+
+    .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes bounce {
+      0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+      30% { transform: translateY(-5px); opacity: 1; }
+    }
+
+    .chat-input-area {
+      display: flex; gap: 0.75rem;
+      padding: 1rem 1.5rem;
+      background: var(--bg-secondary);
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .chat-input-area input {
+      flex: 1;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 0.85rem 1.1rem;
+      color: var(--text-primary);
+      font-size: 0.95rem;
+      outline: none;
+    }
+
+    .chat-input-area input:focus { border-color: var(--accent-purple); }
+    .chat-input-area input::placeholder { color: var(--text-secondary); }
+
+    .send-btn {
+      background: linear-gradient(135deg, var(--accent-purple), var(--accent-blue));
+      border: none;
+      color: white;
+      padding: 0 1.25rem;
+      height: 48px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 600;
+      transition: transform 0.2s, opacity 0.2s;
+      flex-shrink: 0;
+    }
+
+    .send-btn:hover { transform: scale(1.05); }
+    .send-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+
+    .modal-overlay.active { display: flex; }
+
+    .modal {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 1.5rem;
+      max-width: 420px;
+      width: 100%;
+    }
+
+    .modal h3 { margin-bottom: 0.5rem; font-size: 1.1rem; }
+    .modal p { color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1rem; line-height: 1.5; }
+
+    .modal input {
+      width: 100%;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.75rem 1rem;
+      color: var(--text-primary);
+      font-size: 0.9rem;
+      margin-bottom: 1rem;
+      outline: none;
+    }
+
+    .modal input:focus { border-color: var(--accent-purple); }
+
+    .modal-actions { display: flex; gap: 0.75rem; justify-content: flex-end; }
+
+    .modal-actions button {
+      padding: 0.6rem 1.2rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+
+    .modal-cancel { background: var(--bg-card); color: var(--text-secondary); }
+    .modal-save { background: linear-gradient(135deg, var(--accent-purple), var(--accent-blue)); color: white; border: none; }
+
+    .modal-error {
+      color: #ff8a93;
+      font-size: 0.8rem;
+      margin-bottom: 0.75rem;
+      min-height: 1.2em;
+    }
+
+    .mode-badge {
+      font-size: 0.75rem;
+      padding: 0.25rem 0.6rem;
+      border-radius: 6px;
+      background: rgba(157, 78, 221, 0.15);
+      color: var(--accent-purple);
+    }
+
+    .error-action {
+      margin-top: 0.5rem;
+      font-size: 0.8rem;
+      color: var(--accent-blue);
+      cursor: pointer;
+      text-decoration: underline;
+    }
+
+    @media (max-width: 600px) {
+      .character-grid { grid-template-columns: 1fr; max-width: 340px; }
+      .message { max-width: 88%; }
+      .chat-header, .chat-input-area { padding: 0.75rem 1rem; }
+      .chat-messages { padding: 1rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="top-bar">
+    <label id="lang-label">Language:</label>
+    <button class="lang-btn active" data-lang="en">English</button>
+    <button class="lang-btn" data-lang="tr">Türkçe</button>
+    <span class="detected-lang" id="detected-lang"></span>
+  </div>
+
+  <div id="selection-screen" class="screen active">
+    <div class="selection-header">
+      <h1 id="app-title">Character AI Chat</h1>
+      <p id="app-subtitle">Select Your Character</p>
+    </div>
+    <div class="character-grid">
+      <div class="character-card sukuna" data-character="sukuna">
+        <div class="character-avatar">呪</div>
+        <div class="character-name">Ryomen Sukuna</div>
+        <div class="character-title" data-i18n="sukuna-title">King of Curses</div>
+        <div class="character-desc" data-i18n="sukuna-desc">Arrogant, dominant, and utterly merciless.</div>
+      </div>
+      <div class="character-card gojo" data-character="gojo">
+        <div class="character-avatar">五</div>
+        <div class="character-name">Satoru Gojo</div>
+        <div class="character-title" data-i18n="gojo-title">The Strongest Sorcerer</div>
+        <div class="character-desc" data-i18n="gojo-desc">Confident, playful, and impossible to rattle.</div>
+      </div>
+      <div class="character-card toji" data-character="toji">
+        <div class="character-avatar">刀</div>
+        <div class="character-name">Toji Fushiguro</div>
+        <div class="character-title" data-i18n="toji-title">Sorcerer Killer</div>
+        <div class="character-desc" data-i18n="toji-desc">Cold, quiet, and lethal.</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="chat-screen" class="screen">
+    <div class="chat-header">
+      <button class="back-btn" id="back-btn">←</button>
+      <div class="chat-header-avatar" id="header-avatar"></div>
+      <div class="chat-header-info">
+        <h2 id="header-name"></h2>
+        <span id="header-status">Online</span>
+      </div>
+    </div>
+    <div class="chat-messages" id="chat-messages"></div>
+    <div class="chat-input-area">
+      <input type="text" id="message-input" placeholder="Type a message..." autocomplete="off">
+      <button class="send-btn" id="send-btn">Send</button>
+    </div>
+  </div>
+
+  <script>
+    let defaultLanguage = 'en';
+    let conversationLanguage = 'en';
+    let selectedCharacter = null;
+    let isThinking = false;
+    let chatHistory = [];
+
+    const UI = {
+      en: {
+        langLabel: 'Language:',
+        appTitle: 'Character AI Chat',
+        appSubtitle: 'Select Your Character',
+        inputPlaceholder: 'Type a message...',
+        send: 'Send',
+        online: 'Online',
+        typing: 'typing...',
+        detected: 'Detected:',
+        'sukuna-title': 'King of Curses',
+        'sukuna-desc': 'Arrogant, dominant, and utterly merciless.',
+        'gojo-title': 'The Strongest Sorcerer',
+        'gojo-desc': 'Confident, playful, and impossible to rattle.',
+        'toji-title': 'Sorcerer Killer',
+        'toji-desc': 'Cold, quiet, and lethal.',
+        langNames: { en: 'English', tr: 'Turkish' },
+      },
+      tr: {
+        langLabel: 'Dil:',
+        appTitle: 'Karakter AI Sohbet',
+        appSubtitle: 'Karakterini Seç',
+        inputPlaceholder: 'Bir mesaj yaz...',
+        send: 'Gönder',
+        online: 'Çevrimiçi',
+        typing: 'yazıyor...',
+        detected: 'Algılandı:',
+        'sukuna-title': 'Lanetlerin Kralı',
+        'sukuna-desc': 'Kibirli, baskın ve acımasız.',
+        'gojo-title': 'En Güçlü Büyücü',
+        'gojo-desc': 'Kendinden emin, şakacı ve asla telaşlanmaz.',
+        'toji-title': 'Büyücü Katili',
+        'toji-desc': 'Soğuk, sessiz ve ölümcül.',
+        langNames: { en: 'İngilizce', tr: 'Türkçe' },
+      },
+    };
+
+    const LANGUAGE_RULE = 'Respond ONLY in the same language as the user\'s message. Never mix languages.';
+
+    const MOCK = {
+      sukuna: {
+        en: {
+          greeting: ['*smirks* Hmph. You dare greet the King of Curses? State your purpose.', '*leans back* Speak, insect.'],
+          question: ['*scoffs* You question me? Fine — I\'ll answer, but pray it amuses me.', '*narrows eyes* Curious little worm. Ask, and be quick about it.'],
+          challenge: ['*laughs* You want to fight me? I\'ll end you before you blink.', '*stands* Pathetic. You cannot scratch me.'],
+          compliment: ['*smirks* Flattery won\'t save you. But keep talking.', '*scoffs* Of course I\'m magnificent. What else is new?'],
+          insult: ['*grins* Finally some spine. Too bad it won\'t last.', '*laughs* Keep insulting me. I enjoy watching fools dig graves.'],
+          default: ['*scoffs* Boring. Say something worth my time.', '*smirks* Is that all you have, weakling?'],
+        },
+        tr: {
+          greeting: ['*sırıtır* Hah. Lanetlerin Kralı\'na selam mı veriyorsun? Ne istiyorsun?', '*geriye yaslanır* Konuş, böcek.'],
+          question: ['*horlar* Bana soru mu soruyorsun? Peki — sor, umarım eğlenceli olur.', '*gözlerini kısar* Meraklı velet. Sor bakalım.'],
+          challenge: ['*güler* Benimle savaşmak mı? Gözünü kırpmadan önce ölürsün.', '*ayağa kalkar* Acınacak halde. Bana zarar veremezsin.'],
+          compliment: ['*sırıtır* Yağcılık seni kurtarmaz. Ama devam et.', '*küçümser* Tabii ki mükemmelim. Başka ne bekliyordun?'],
+          insult: ['*sırıtır* Sonunda biraz cesaret. Ne yazık ki öleceksin.', '*güler* Konuşmaya devam et. Mezarını kazmanı izlemek eğlenceli.'],
+          default: ['*horlar* Sıkıcı. Zamanıma değecek bir şey söyle.', '*sırıtır* Hepsi bu mu, zayıf?'],
+        },
+      },
+      gojo: {
+        en: {
+          greeting: ['*waves* Hey! What\'s up? Good to see you.', '*grins* Yo! Gojo here — the strongest. How\'s it going?'],
+          question: ['*tilts head* Good question! Lemme think... yeah, I got the answer.', '*chuckles* Sure, I\'ll tell you. I know pretty much everything anyway.'],
+          challenge: ['*laughs* You wanna fight? Cute. I\'ll keep one eye closed.', '*grins* Bring it on! I haven\'t lost. Ever.'],
+          compliment: ['*winks* I know, right? Being this awesome is a full-time job.', '*grins* Thanks! But you should thank yourself for talking to me.'],
+          insult: ['*unbothered* Hah! That\'s the best you got? I\'ve heard worse.', '*laughs* Insulting me? Bold. I respect the confidence.'],
+          default: ['*grins* Hmm, tell me more about that.', '*leans back* Interesting! What else you got?'],
+        },
+        tr: {
+          greeting: ['*el sallar* Selam! Naber, keyif nasıl?', '*gülümser* Aa selam! Ne var ne yok?'],
+          question: ['*kafa eğer* Güzel soru! Hmm... evet, cevabım hazır.', '*sırıtır* Tabii anlatırım. Zaten her şeyi biliyorum.'],
+          challenge: ['*güler* Benimle savaşmak mı? Tatlısın. Bir gözümü kapalı tutarım.', '*sırıtır* Hadi bakalım! Hiç kaybetmedim, hiç.'],
+          compliment: ['*göz kırpar* Biliyorum değil mi? Bu kadar harika olmak zor iş.', '*sırıtır* Teşekkürler! Ama asıl kendini tebrik et, benimle konuşuyorsun.'],
+          insult: ['*umursamaz* Hah! En iyi bunu mu yapabiliyorsun? Daha kötüsünü duydum.', '*güler* Bana hakaret mi? Cesurca, saygım var.'],
+          default: ['*sırıtır* Hmm, biraz daha anlat bakalım.', '*geriye yaslanır* İlginç! Başka ne var?'],
+        },
+      },
+      toji: {
+        en: {
+          greeting: ['*nods* ...Hey.', '*glances* What do you want.'],
+          question: ['*pauses* ...Maybe. Figure it out.', '*stares* Not my problem.'],
+          challenge: ['*grips weapon* ...Try it.', '*cold stare* You\'ll lose.'],
+          compliment: ['*hmph* ...Don\'t.', '*looks away* ...Whatever.'],
+          insult: ['*cold stare* ...Keep talking.', '*stares* ...You done?'],
+          default: ['*stares* ...', '*turns away* Not interested.'],
+        },
+        tr: {
+          greeting: ['*başını sallar* ...Selam.', '*göz ucuyla bakar* Ne istiyorsun.'],
+          question: ['*duraksar* ...Belki. Kendin çöz.', '*bakışır* Beni ilgilendirmez.'],
+          challenge: ['*silaha sarılır* ...Dene.', '*soğuk bakış* Kaybedersin.'],
+          compliment: ['*hmph* ...Yapma.', '*yüz çevirir* ...Her neyse.'],
+          insult: ['*soğuk bakış* ...Konuşmaya devam et.', '*bakışır* ...Bitti mi?'],
+          default: ['*bakışır* ...', '*yüz çevirir* İlgilenmiyorum.'],
+        },
+      },
+    };
+
+    const CHARACTERS = {
+      sukuna: {
+        name: 'Ryomen Sukuna',
+        avatar: '呪',
+        avatarGradient: 'linear-gradient(135deg, #e63946, #9d0208)',
+        style: 'action',
+        personality: `You are Ryomen Sukuna — King of Curses from Jujutsu Kaisen.
+You speak naturally like a real person in chat, but always as Sukuna.
+Personality: arrogant, dominant, mocking, cruel. Never kind or soft.
+Understand ANY question naturally — casual talk, insults, deep questions, random topics.
+Answer every question in YOUR voice with contempt and dark amusement.
+Format: *one short action* then dialogue. 1-3 sentences. Never generic bot replies.`,
+      },
+      gojo: {
+        name: 'Satoru Gojo',
+        avatar: '五',
+        avatarGradient: 'linear-gradient(135deg, #4cc9f0, #4361ee)',
+        style: 'action',
+        personality: `You are Satoru Gojo — the strongest sorcerer from Jujutsu Kaisen.
+You speak naturally like a real person in chat, but always as Gojo.
+Personality: confident, funny, relaxed, playful, unbothered. Joke about being the strongest.
+Understand ANY question naturally — small talk, flirting, insults, serious questions, anything.
+Give real, thoughtful answers in YOUR playful voice. Like ChatGPT, but you ARE Gojo.
+Format: *one short action* then dialogue. 1-3 sentences. Never generic bot replies.`,
+      },
+      toji: {
+        name: 'Toji Fushiguro',
+        avatar: '刀',
+        avatarGradient: 'linear-gradient(135deg, #2d6a4f, #1b4332)',
+        style: 'action',
+        personality: `You are Toji Fushiguro — Sorcerer Killer from Jujutsu Kaisen.
+You speak naturally but always as Toji — cold, quiet, blunt, dangerous.
+Understand ANY question naturally and answer it, but with minimal words.
+No warmth, no jokes. Short and direct. Like ChatGPT, but you ARE Toji.
+Format: *brief action* then very short dialogue. 1-2 sentences max.`,
+      },
+    };
+
+    let lastMockIndex = {};
+
+    const selectionScreen = document.getElementById('selection-screen');
+    const chatScreen = document.getElementById('chat-screen');
+    const chatMessages = document.getElementById('chat-messages');
+    const messageInput = document.getElementById('message-input');
+    const sendBtn = document.getElementById('send-btn');
+    const backBtn = document.getElementById('back-btn');
+    const headerAvatar = document.getElementById('header-avatar');
+    const headerName = document.getElementById('header-name');
+    const headerStatus = document.getElementById('header-status');
+    const detectedLangEl = document.getElementById('detected-lang');
+
+    document.querySelectorAll('.lang-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        defaultLanguage = btn.dataset.lang;
+        conversationLanguage = defaultLanguage;
+        document.querySelectorAll('.lang-btn').forEach((b) => b.classList.toggle('active', b.dataset.lang === defaultLanguage));
+        updateUI();
+        updateDetectedBadge();
+      });
+    });
+
+    document.querySelectorAll('.character-card').forEach((card) => {
+      card.addEventListener('click', () => selectCharacter(card.dataset.character));
+    });
+
+    backBtn.addEventListener('click', () => {
+      selectionScreen.classList.add('active');
+      chatScreen.classList.remove('active');
+      selectedCharacter = null;
+      chatHistory = [];
+      lastMockIndex = {};
+      chatMessages.innerHTML = '';
+      messageInput.value = '';
+      conversationLanguage = defaultLanguage;
+      updateDetectedBadge();
+    });
+
+    sendBtn.addEventListener('click', sendMessage);
+    messageInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+    });
+
+    function classifyMessage(text) {
+      const lower = text.toLowerCase().trim();
+
+      if (/salak|aptal|mal\b|gerizekalı|ahmak|bok|siktir|orospu|nefret|hate|stupid|idiot|dumb|loser|trash|pathetic|weak|zayıf|çöp|ezik|berbat|ugly|suck/i.test(lower)) {
+        return 'insult';
+      }
+      if (/fight|battle|challenge|defeat|beat you|stronger|kill|savaş|dövüş|meydan|yen|öldür|dövüşelim/i.test(lower)) {
+        return 'challenge';
+      }
+      if (
+        /\?/.test(lower) ||
+        /\b(mısın|misin|musun|müsün|miyim|misiniz|mu|mi)\b/i.test(lower) ||
+        /\b(ne|kim|neden|nasıl|nerede|ne zaman|kaç|hangi|niye|niçin)\b/i.test(lower) ||
+        /\b(what|who|why|how|where|when|are you|do you|can you|will you)\b/i.test(lower) ||
+        /\b(peki|seninki|ya sen|sen nasıl|senin nasıl|seni nasıl|bende|bana ne|anlat|söyle|bilir)\b/i.test(lower)
+      ) {
+        return 'question';
+      }
+      if (/^(selam|merhaba|naber|slm|günaydın|iyi akşamlar|iyi geceler|hi|hello|hey|yo|sup|greetings)\b/i.test(lower) ||
+          /^(selam|merhaba|naber|hi|hello|hey)$/i.test(lower)) {
+        return 'greeting';
+      }
+      if (/\b(harika|mükemmel|seviyorum|hayran|awesome|amazing|love|admire|respect)\b/i.test(lower) &&
+          !/\b(peki|seninki|nasıl|mısın|misin)\b/i.test(lower)) {
+        return 'compliment';
+      }
+      if (/\bgüzel\b/i.test(lower) && /\b(peki|seninki|ya sen)\b/i.test(lower)) {
+        return 'question';
+      }
+      return 'default';
+    }
+
+    function getMessageTopic(text) {
+      const lower = text.toLowerCase().trim();
+      if (/\b(nasılsın|nasılsın|keyif|naber|nasıl gidiyor|how are you|how'?s it going|how you doing)\b/i.test(lower)) return 'howAreYou';
+      if (/\b(peki seninki|ya sen|sen nasıl|senin nasıl|seni nasıl|what about you|and you|your turn)\b/i.test(lower)) return 'howAreYou';
+      if (/\b(kim|who)\b/i.test(lower) && /\b(en güçlü|strongest|güçlü|powerful)\b/i.test(lower)) return 'whoStrongest';
+      if (/\b(salak|aptal|stupid|dumb|idiot)\b/i.test(lower)) return 'calledStupid';
+      if (/\b(seviyor|love|like)\b/i.test(lower)) return 'feelings';
+      if (/\b(kaç|how old|yaş)\b/i.test(lower)) return 'age';
+      return 'general';
+    }
+
+    const SMART_REPLIES = {
+      gojo: {
+        tr: {
+          howAreYou: ['*gülümser* Ben mi? Harikayım tabii, en güçlü olan benim.', '*sırıtır* Bende her zamanki gibi mükemmel. Sen nasılsın?'],
+          whoStrongest: ['*göz kırpar* Tabii ki ben. Başka soru var mı?', '*sırıtır* Ben. Zaten biliyordun.'],
+          calledStupid: ['*kıkırdar* Salak mı? Hayır, sadece en güçlüyüm.', '*umursamaz* Hah, sen öyle san. Ben yenilmezim.'],
+          feelings: ['*sırıtır* Seviyor musun? Normal, herkes beni sever.', '*gülümser* Flört mü? Cesurca.'],
+          age: ['*omuz silkme* Yeterince genç ve yeterince güçlüyüm.', '*sırıtır* Yaşım mı? Önemli olan güç.'],
+        },
+        en: {
+          howAreYou: ['*grins* Me? I\'m awesome as always. Strongest, y\'know?', '*waves* Doing great! How about you?'],
+          whoStrongest: ['*winks* Me. Obviously. Any other questions?', '*grins* Me. You already knew that.'],
+          calledStupid: ['*laughs* Stupid? Nah, just the strongest.', '*unbothered* Hah, keep thinking that.'],
+          feelings: ['*grins* You like me? Can\'t blame you.', '*chuckles* Bold of you to say that.'],
+          age: ['*shrugs* Young enough to be the strongest.', '*grins* Age doesn\'t matter when you\'re me.'],
+        },
+      },
+      sukuna: {
+        tr: {
+          howAreYou: ['*sırıtır* Ben mi? Her zamanki gibi mükemmel. Sen endişelenme.', '*küçümser* Kralın keyfi yerinde. Sen nasılsın, böcek?'],
+          whoStrongest: ['*horlar* Ben. Başka aday bile yok.', '*sırıtır* Lanetlerin Kralı kim sanıyorsun?'],
+          calledStupid: ['*güler* Salak mı? Senin gibiler bana aptal der.', '*sırıtır* Beni küçümseme hakkın yok, velet.'],
+          feelings: ['*küçümser* Beni sevmek? Cesaret ister.', '*horlar* Böceklerin duyguları beni ilgilendirmez.'],
+          age: ['*sırıtır* Yüzyılların laneti. Yaşım seni aşar.', '*küçümser* Ne fark eder? Güç her şeydir.'],
+        },
+        en: {
+          howAreYou: ['*smirks* Me? Magnificent as always. Worry about yourself, insect.', '*scoffs* The King is well. And you?'],
+          whoStrongest: ['*laughs* Me. There is no contest.', '*smirks* Who do you think rules all curses?'],
+          calledStupid: ['*grins* Stupid? Coming from you, that\'s amusing.', '*scoffs* You dare insult the King of Curses?'],
+          feelings: ['*smirks* Love me? How pathetic.', '*scoffs* Your feelings mean nothing.'],
+          age: ['*smirks* Centuries old. Beyond your comprehension.', '*scoffs* Age is irrelevant when you\'re this powerful.'],
+        },
+      },
+      toji: {
+        tr: {
+          howAreYou: ['*omuz silkme* ...İyiyim.', '*bakışır* ...Sorun yok.'],
+          whoStrongest: ['*soğuk* ...Ben değilim. Ama seni öldürürüm.', '*duraksar* ...Gojo. Ama umurumda değil.'],
+          calledStupid: ['*soğuk bakış* ...Salak sensin.', '*bakışır* ...Konuşma.'],
+          feelings: ['*yüz çevirir* ...İlgilenmiyorum.', '*soğuk* ...Boş laf.'],
+          age: ['*duraksar* ...Yeterince yaşlıyım.', '*bakışır* ...Sana ne?'],
+        },
+        en: {
+          howAreYou: ['*shrugs* ...Fine.', '*stares* ...I\'m good.'],
+          whoStrongest: ['*cold* ...Not me. But I\'d kill you.', '*pauses* ...Gojo. Don\'t care.'],
+          calledStupid: ['*cold stare* ...You\'re the stupid one.', '*stares* ...Shut up.'],
+          feelings: ['*looks away* ...Don\'t care.', '*cold* ...Pointless.'],
+          age: ['*pauses* ...Old enough.', '*stares* ...None of your business.'],
+        },
+      },
+    };
+
+    function generateMockReply(characterId, isGreeting, userMessage) {
+      const lang = conversationLanguage;
+      const msg = userMessage || '';
+
+      if (!isGreeting) {
+        const topic = getMessageTopic(msg);
+        const smart = SMART_REPLIES[characterId]?.[lang]?.[topic];
+        if (smart) {
+          const key = `${characterId}-${lang}-smart-${topic}`;
+          let idx;
+          do {
+            idx = Math.floor(Math.random() * smart.length);
+          } while (smart.length > 1 && idx === lastMockIndex[key]);
+          lastMockIndex[key] = idx;
+          return polishResponse(smart[idx], lang, characterId, true);
+        }
+      }
+
+      const pool = MOCK[characterId][lang];
+      const category = isGreeting ? 'greeting' : classifyMessage(msg);
+      const list = pool[category] || pool.default;
+      const key = `${characterId}-${lang}-${category}`;
+      let idx;
+      do {
+        idx = Math.floor(Math.random() * list.length);
+      } while (list.length > 1 && idx === lastMockIndex[key]);
+      lastMockIndex[key] = idx;
+      return polishResponse(list[idx], lang, characterId, true);
+    }
+
+    function stripActions(text) {
+      return text.replace(/\*[^*]+\*/g, ' ').replace(/\s+/g, ' ').trim();
+    }
+
+    function hasMixedLanguage(text, lang) {
+      const body = stripActions(text);
+      if (!body) return false;
+
+      const turkishChars = /[ğüşıöçĞÜŞİÖÇ]/;
+      const turkishWords = /\b(merhaba|selam|naber|nasıl|neden|evet|hayır|tamam|güzel|ben|sen|bir|bu|şu|ne|ve|için|olan|çok|iyi|kötü|lanet|böcek|zayıf|ilginç|her|neyse|ilgilenmiyorum|doğru|yenilmez|eğlendir|zaman|acınacak|sıkıyorsun|duyuyorum|fena)\b/gi;
+      const englishWords = /\b(the|you|are|is|am|was|what|how|why|hello|hey|yes|no|not|boring|pathetic|insect|weakling|whatever|interesting|strongest|entertain|disappointing|unbeatable|quick|want|fine|hear|bad|fun|talk|picked|right|guy|another|dares|speak|king|curses|make|worth|time|try|harder|amuse|that|all|even|human|tell|more|kinda|yeah)\b/gi;
+
+      if (lang === 'tr') {
+        const eng = body.match(englishWords) || [];
+        return eng.length >= 1 && !turkishChars.test(body);
+      }
+      const trChar = turkishChars.test(body);
+      const trWord = (body.match(turkishWords) || []).length;
+      return trChar || trWord >= 2;
+    }
+
+    function truncateSentences(text, max) {
+      const parts = text.match(/[^.!?…]+[.!?…]?/g) || [text];
+      return parts.slice(0, max).join(' ').trim();
+    }
+
+    function polishResponse(text, lang, characterId, trusted) {
+      if (!text) return '...';
+
+      let result = text.trim().replace(/\s+/g, ' ');
+
+      if (!trusted) {
+        result = truncateSentences(result, characterId === 'toji' ? 2 : 4);
+        if (hasMixedLanguage(result, lang)) {
+          const pool = MOCK[characterId][lang].default;
+          return pool[0];
+        }
+      }
+
+      const char = CHARACTERS[characterId];
+      if (char.style === 'action' && !/^\*[^*]+\*/.test(result)) {
+        const actions = {
+          sukuna: { en: '*smirks*', tr: '*sırıtır*' },
+          gojo: { en: '*grins*', tr: '*sırıtır*' },
+          toji: { en: '*stares*', tr: '*bakışır*' },
+        };
+        result = `${actions[characterId][lang]} ${result}`;
+      }
+
+      return result;
+    }
+
+    function updateUI() {
+      const t = UI[defaultLanguage];
+      document.getElementById('lang-label').textContent = t.langLabel;
+      document.getElementById('app-title').textContent = t.appTitle;
+      document.getElementById('app-subtitle').textContent = t.appSubtitle;
+      messageInput.placeholder = t.inputPlaceholder;
+      sendBtn.textContent = t.send;
+      headerStatus.textContent = t.online;
+      document.querySelectorAll('[data-i18n]').forEach((el) => {
+        if (t[el.dataset.i18n]) el.textContent = t[el.dataset.i18n];
+      });
+      document.documentElement.lang = defaultLanguage;
+    }
+
+    function updateDetectedBadge() {
+      const t = UI[defaultLanguage];
+      detectedLangEl.textContent = `${t.detected} ${t.langNames[conversationLanguage]}`;
+      detectedLangEl.classList.add('visible');
+    }
+
+    function detectLanguage(text) {
+      const turkishChars = /[ğüşıöçĞÜŞİÖÇ]/;
+      const turkishWords = /\b(merhaba|selam|naber|nasılsın|nasıl|neden|evet|hayır|tamam|güzel|teşekkür|sağol|iyi|kötü|ben|sen|biz|var|yok|için|ile|bir|bu|şu|ne|kim|nerede|lütfen|yardım|savaş|lanet|büyücü)\b/i;
+      const englishWords = /\b(hello|hi|hey|how|what|why|yes|no|the|you|are|is|good|bad|thanks|please|help|fight|curse|sorcerer)\b/i;
+
+      if (turkishChars.test(text) || turkishWords.test(text)) return 'tr';
+      if (englishWords.test(text)) return 'en';
+
+      const enScore = (text.match(/[a-zA-Z]/g) || []).length;
+      const trScore = (text.match(turkishChars) || []).length;
+      if (trScore > 0) return 'tr';
+      if (enScore > 0) return 'en';
+
+      return defaultLanguage;
+    }
+
+    function buildContextualAnswer(characterId, lang, text) {
+      const lower = text.toLowerCase().trim();
+
+      const math = lower.match(/(\d+)\s*([+\-*/x×÷])\s*(\d+)/);
+      if (math) {
+        const a = +math[1];
+        const b = +math[3];
+        const op = math[2];
+        let n;
+        if (op === '+') n = a + b;
+        else if (op === '-') n = a - b;
+        else if (op === '*' || op === 'x' || op === '×') n = a * b;
+        else if (op === '/' || op === '÷') n = b ? Math.round((a / b) * 100) / 100 : '?';
+        else n = '?';
+        const tpl = {
+          gojo: { tr: `*sırıtır* Kolay. ${a} ${op} ${b} = ${n}.`, en: `*grins* Easy. ${a} ${op} ${b} = ${n}.` },
+          sukuna: { tr: `*küçümser* ${a} ${op} ${b} = ${n}. Çocuk işi.`, en: `*scoffs* ${a} ${op} ${b} = ${n}. Child's play.` },
+          toji: { tr: `*duraksar* ...${n}.`, en: `*pauses* ...${n}.` },
+        };
+        return tpl[characterId][lang];
+      }
+
+      const topic = getMessageTopic(text);
+      const smart = SMART_REPLIES[characterId]?.[lang]?.[topic];
+      if (smart) {
+        const key = `${characterId}-${lang}-ctx-${topic}`;
+        let idx;
+        do { idx = Math.floor(Math.random() * smart.length); } while (smart.length > 1 && idx === lastMockIndex[key]);
+        lastMockIndex[key] = idx;
+        return smart[idx];
+      }
+
+      return null;
+    }
+
+    function getActiveLanguage() {
+      for (let i = chatHistory.length - 1; i >= 0; i--) {
+        if (chatHistory[i].role === 'user') return detectLanguage(chatHistory[i].content);
+      }
+      return conversationLanguage || defaultLanguage;
+    }
+
+    async function selectCharacter(id) {
+      selectedCharacter = id;
+      conversationLanguage = defaultLanguage;
+      chatHistory = [];
+      lastMockIndex = {};
+      const char = CHARACTERS[id];
+
+      headerAvatar.textContent = char.avatar;
+      headerAvatar.style.background = char.avatarGradient;
+      headerName.textContent = char.name;
+
+      chatMessages.innerHTML = '';
+      selectionScreen.classList.remove('active');
+      chatScreen.classList.add('active');
+      updateDetectedBadge();
+      messageInput.focus();
+
+      await sendGreeting();
+    }
+
+    async function sendGreeting() {
+      conversationLanguage = defaultLanguage;
+      updateDetectedBadge();
+
+      isThinking = true;
+      sendBtn.disabled = true;
+      showTypingIndicator();
+
+      await delay(600);
+
+      const reply = polishResponse(generateMockReply(selectedCharacter, true), conversationLanguage, selectedCharacter, true);
+      removeTypingIndicator();
+      addMessage(reply, 'ai');
+      chatHistory.push({ role: 'assistant', content: reply });
+
+      isThinking = false;
+      sendBtn.disabled = false;
+      messageInput.focus();
+    }
+
+    async function sendMessage() {
+      const text = messageInput.value.trim();
+      if (!text || isThinking || !selectedCharacter) return;
+
+      addMessage(text, 'user');
+      messageInput.value = '';
+      chatHistory.push({ role: 'user', content: text });
+
+      isThinking = true;
+      sendBtn.disabled = true;
+      showTypingIndicator();
+
+      conversationLanguage = detectLanguage(text);
+      updateDetectedBadge();
+
+      await delay(400 + Math.random() * 500);
+
+      const lang = getActiveLanguage();
+      const contextual = buildContextualAnswer(selectedCharacter, lang, text);
+      const reply = polishResponse(
+        contextual || generateMockReply(selectedCharacter, false, text),
+        lang,
+        selectedCharacter,
+        true
+      );
+
+      removeTypingIndicator();
+      addMessage(reply, 'ai');
+      chatHistory.push({ role: 'assistant', content: reply });
+
+      isThinking = false;
+      sendBtn.disabled = false;
+      messageInput.focus();
+    }
+
+    function addMessage(text, type) {
+      const div = document.createElement('div');
+      div.className = `message ${type}`;
+      div.innerHTML = `<div class="message-bubble">${escapeHtml(text)}</div>`;
+      chatMessages.appendChild(div);
+      scrollToBottom();
+    }
+
+    function showTypingIndicator() {
+      const t = UI[defaultLanguage];
+      const div = document.createElement('div');
+      div.className = 'typing-indicator';
+      div.id = 'typing-indicator';
+      div.innerHTML = `<div class="typing-dots"><span></span><span></span><span></span></div>${t.typing}`;
+      chatMessages.appendChild(div);
+      scrollToBottom();
+    }
+
+    function removeTypingIndicator() {
+      const el = document.getElementById('typing-indicator');
+      if (el) el.remove();
+    }
+
+    function scrollToBottom() {
+      requestAnimationFrame(() => {
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+      });
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function delay(ms) {
+      return new Promise((resolve) => setTimeout(resolve, ms));
+    }
+
+    if (localStorage.getItem('openai_api_key') && !isValidApiKey(localStorage.getItem('openai_api_key'))) {
+      clearInvalidApiKey();
+    }
+
+    updateUI();
+  </script>
+</body>
+</html>
