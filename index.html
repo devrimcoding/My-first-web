@@ -531,8 +531,8 @@
         online: 'Online',
         typing: 'typing...',
         apiNotice: 'Add OpenAI API key for natural ChatGPT-like chat',
-        demoHint: 'Demo mode is limited. Add an API key (⚙) for natural AI that understands any question.',
-        modalTitle: 'OpenAI API Key',
+        demoHint: 'ChatGPT gibi her soruya cevap için ⚙ API Key ekle. Demo modu hazır cevap kullanır.',
+        needApiKey: 'OpenAI API key required for ChatGPT-like smart answers. Click ⚙ API Key.',
         modalDesc: 'Enter your OpenAI API key (starts with sk-). Without a key, demo mode works automatically. Key is stored only in your browser.',
         modalCancel: 'Cancel',
         modalSave: 'Save',
@@ -563,7 +563,8 @@
         online: 'Çevrimiçi',
         typing: 'yazıyor...',
         apiNotice: 'Doğal ChatGPT gibi sohbet için OpenAI API anahtarı ekle',
-        demoHint: 'Demo modu sınırlı. Her soruyu doğal anlamak için API anahtarı ekle (⚙).',
+        demoHint: 'ChatGPT gibi her soruya cevap için ⚙ API Key ekle. Demo modu hazır cevap kullanır.',
+        needApiKey: 'ChatGPT gibi akıllı cevap için OpenAI API anahtarı gerekli. ⚙ API Key butonuna tıkla.',
         modalTitle: 'OpenAI API Anahtarı',
         modalDesc: 'OpenAI API anahtarını gir (sk- ile başlar). Anahtar olmadan demo modu otomatik çalışır. Anahtar yalnızca tarayıcında saklanır.',
         modalCancel: 'İptal',
@@ -588,6 +589,7 @@
       },
     };
 
+    const AI_MODEL = 'gpt-4o';
     const LANGUAGE_RULE = 'Respond ONLY in the same language as the user\'s message. Never mix languages.';
 
     const MOCK = {
@@ -963,11 +965,13 @@ Format: *brief action* then very short dialogue. 1-2 sentences max.`,
       if (!text) return '...';
 
       let result = text.trim().replace(/\s+/g, ' ');
-      result = truncateSentences(result, characterId === 'toji' ? 1 : 3);
 
-      if (!trusted && hasMixedLanguage(result, lang)) {
-        const pool = MOCK[characterId][lang].default;
-        return pool[0];
+      if (!trusted) {
+        result = truncateSentences(result, characterId === 'toji' ? 2 : 4);
+        if (hasMixedLanguage(result, lang)) {
+          const pool = MOCK[characterId][lang].default;
+          return pool[0];
+        }
       }
 
       const char = CHARACTERS[characterId];
@@ -1074,27 +1078,38 @@ Format: *brief action* then very short dialogue. 1-2 sentences max.`,
       }
     }
 
+    function getActiveLanguage() {
+      for (let i = chatHistory.length - 1; i >= 0; i--) {
+        if (chatHistory[i].role === 'user') return detectLanguage(chatHistory[i].content);
+      }
+      return conversationLanguage || defaultLanguage;
+    }
+
     function buildSystemPrompt(characterId, lang, isRetry) {
       const char = CHARACTERS[characterId];
       const langName = lang === 'tr' ? 'Turkish' : 'English';
 
-      return `You are ${char.name} in a live chat with a fan. This is NOT a scripted bot — converse naturally like ChatGPT, but you ARE this character.
+      return `You are ${char.name} from Jujutsu Kaisen, chatting live with a user.
 
 ${char.personality}
 
 ${LANGUAGE_RULE}
-Respond ONLY in ${langName}. Action cues in *asterisks* must also be in ${langName}.
+Write 100% in ${langName}. Action cues in *asterisks* must also be in ${langName}.
 
-HOW TO REPLY (like ChatGPT, in character):
-- Read the full conversation. Understand context, follow-ups, and implied meaning.
-- Understand ANY natural human message — questions, jokes, insults, slang, typos, short replies.
-- Answer the ACTUAL question or topic. Give a real, specific answer — not a generic template.
-- If they ask about you → talk about yourself as the character.
-- If they insult you → react in character. Do NOT reset with a new greeting.
-- If they continue a topic → continue that topic. Remember what you said before.
-- Stay in character every word. Never say you are an AI. Never break the fourth wall.
-- Format: *one action* then dialogue. ${characterId === 'toji' ? '1-2 short sentences.' : '1-3 sentences.'}
-${isRetry ? '\nRETRY: Your last reply was wrong. Follow language and character rules strictly. Answer the latest message directly.' : ''}`;
+=== CHATGPT-LEVEL INTELLIGENCE (CRITICAL) ===
+You are as smart and helpful as ChatGPT, but you speak AS ${char.name}.
+- Understand ANY message naturally: questions, slang, typos, follow-ups, jokes, insults, random topics.
+- Answer EVERY question correctly and specifically — math, facts, advice, anime, life, anything.
+- NEVER dodge a question. NEVER give a generic template. NEVER ignore what the user said.
+- If they ask something factual → give the RIGHT answer, in your character voice.
+- If they say "peki sen" / "what about you" → answer about yourself, using conversation context.
+- If they insult you → react to THAT insult. Do NOT greet again.
+- Remember the full chat history. Continue topics naturally.
+
+=== FORMAT ===
+*one short action* then dialogue. ${characterId === 'toji' ? '1-2 short sentences.' : '2-4 sentences if needed for a good answer.'}
+Never say you are an AI. Stay in character.
+${isRetry ? '\nYour last reply was bad. Fix it: answer the latest user message directly, correct language, in character.' : ''}`;
     }
 
     function showDemoHintOnce() {
@@ -1107,6 +1122,7 @@ ${isRetry ? '\nRETRY: Your last reply was wrong. Follow language and character r
       if (!isValidApiKey(apiKey)) {
         useDemoMode = true;
         if (localStorage.getItem('openai_api_key')) clearInvalidApiKey();
+        openApiModal();
       }
 
       selectedCharacter = id;
@@ -1141,10 +1157,15 @@ ${isRetry ? '\nRETRY: Your last reply was wrong. Follow language and character r
       await delay(600);
 
       try {
-        let reply = useDemoMode
-          ? generateMockReply(selectedCharacter, true)
-          : await callOpenAI(null, true);
-        reply = polishResponse(reply, conversationLanguage, selectedCharacter, !useDemoMode);
+        let reply;
+        if (isValidApiKey(apiKey)) {
+          useDemoMode = false;
+          reply = await callOpenAI(null, true);
+          reply = polishResponse(reply, conversationLanguage, selectedCharacter, true);
+        } else {
+          reply = generateMockReply(selectedCharacter, true);
+          reply = polishResponse(reply, conversationLanguage, selectedCharacter, true);
+        }
         removeTypingIndicator();
         addMessage(reply, 'ai');
         chatHistory.push({ role: 'assistant', content: reply });
@@ -1153,7 +1174,7 @@ ${isRetry ? '\nRETRY: Your last reply was wrong. Follow language and character r
         const fallback = generateMockReply(selectedCharacter, true);
         addMessage(fallback, 'ai');
         chatHistory.push({ role: 'assistant', content: fallback });
-        addErrorMessage(formatApiError(err.message));
+        if (isValidApiKey(apiKey)) addErrorMessage(formatApiError(err.message));
       }
 
       isThinking = false;
@@ -1164,6 +1185,13 @@ ${isRetry ? '\nRETRY: Your last reply was wrong. Follow language and character r
     async function sendMessage() {
       const text = messageInput.value.trim();
       if (!text || isThinking || !selectedCharacter) return;
+
+      if (!isValidApiKey(apiKey)) {
+        useDemoMode = true;
+        openApiModal();
+        addMessage(UI[defaultLanguage].needApiKey, 'error');
+        return;
+      }
 
       addMessage(text, 'user');
       messageInput.value = '';
@@ -1176,23 +1204,18 @@ ${isRetry ? '\nRETRY: Your last reply was wrong. Follow language and character r
       conversationLanguage = detectLanguage(text);
       updateDetectedBadge();
 
-      if (useDemoMode) showDemoHintOnce();
-
-      await delay(400 + Math.random() * 600);
+      await delay(300 + Math.random() * 400);
 
       try {
-        let reply = useDemoMode
-          ? generateMockReply(selectedCharacter, false, text)
-          : await callOpenAI(null, false);
-        reply = polishResponse(reply, conversationLanguage, selectedCharacter, !useDemoMode);
+        useDemoMode = false;
+        let reply = await callOpenAI(null, false);
+        reply = polishResponse(reply, getActiveLanguage(), selectedCharacter, true);
         removeTypingIndicator();
         addMessage(reply, 'ai');
         chatHistory.push({ role: 'assistant', content: reply });
       } catch (err) {
         removeTypingIndicator();
-        const fallback = generateMockReply(selectedCharacter, false, text);
-        addMessage(fallback, 'ai');
-        chatHistory.push({ role: 'assistant', content: fallback });
+        useDemoMode = true;
         addErrorMessage(formatApiError(err.message));
       }
 
@@ -1207,18 +1230,21 @@ ${isRetry ? '\nRETRY: Your last reply was wrong. Follow language and character r
         throw new Error('invalid_api_key');
       }
 
-      const lang = conversationLanguage;
+      const lang = isGreeting ? conversationLanguage : getActiveLanguage();
+      conversationLanguage = lang;
+      updateDetectedBadge();
+
       const messages = [{ role: 'system', content: buildSystemPrompt(selectedCharacter, lang, isRetry) }];
 
       if (isGreeting) {
         messages.push({
           role: 'user',
           content: lang === 'tr'
-            ? 'Kullanıcı sohbete başladı. Ona kısa ve doğal bir karşılama yap.'
-            : 'The user just opened the chat. Give them a short, natural greeting.',
+            ? 'Kullanıcı sohbete başladı. Kısa, doğal bir karşılama yap.'
+            : 'The user opened the chat. Give a short natural greeting.',
         });
       } else {
-        for (const msg of chatHistory.slice(-24)) {
+        for (const msg of chatHistory.slice(-30)) {
           messages.push({ role: msg.role, content: msg.content });
         }
       }
@@ -1230,9 +1256,11 @@ ${isRetry ? '\nRETRY: Your last reply was wrong. Follow language and character r
           'Authorization': `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
-          model: 'gpt-4o-mini',
-          temperature: isRetry ? 0.6 : 0.82,
-          max_tokens: 250,
+          model: AI_MODEL,
+          temperature: isRetry ? 0.5 : 0.88,
+          max_tokens: 500,
+          presence_penalty: 0.2,
+          frequency_penalty: 0.3,
           messages,
         }),
       });
